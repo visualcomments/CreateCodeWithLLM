@@ -1,0 +1,993 @@
+=== НАЧАЛО ОБРАБОТКИ МОДЕЛИ: command-a-03-2025 ===
+
+Этап: первичный_ответ. Полный промпт:
+
+    You are a Python programming assistant. Write a fully working Python module 
+    for the following task:
+
+    
+
+    Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed swaps.
+
+    Input: A vector `a` of length `n` (0-indexed).
+
+    Allowed operations:
+    - swap(i, i+1) for i = 0..n-2 (adjacent swap)
+    - swap(n-1, 0) — a circular swap between the last and the first element
+
+    Strict constraints:
+    - No other swaps, slicing, built-in sorting functions, or creating new arrays are allowed.
+    - All swaps must be appended to the `swaps` list immediately after performing them.
+    - Applying the swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    - Circular swaps can ONLY be performed as swap(n-1, 0), never as swap(i, n-1-i) or any other non-adjacent pair.
+
+    Critical clarification:
+    - Circular swaps may be used multiple times as needed during the sorting process.
+    - The sorting algorithm must continue applying swaps until the array is fully sorted.
+
+    Requirements:
+    1. Implement a function `solve(vector)` that returns a tuple `(swaps, sorted_array)`:
+        - `swaps` is a list of tuples representing all swaps performed.
+        - `sorted_array` is the final sorted array after applying all swaps to a copy of the input vector.
+    2. Include a CLI interface:
+        - When the script is executed directly, it should accept a vector as a **command-line argument**.
+        - The output should be a **JSON object** with keys `"swaps"` and `"sorted_array"`.
+    3. Include a minimal example in the `__main__` block for quick testing.
+    4. The code must be fully self-contained and executable without external dependencies.
+    5. JSON output must always be structured and parseable for automated testing.
+
+    Example expected usage:
+
+    ```bash
+    python solve_module.py "[3,1,2,5,4]"
+    
+
+    ⚠️ Requirements:
+    • Implement a function `solve(vector)` that sorts the vector using only adjacent swaps and circular swap `(n-1,0)`.
+    • Return a tuple `(swaps, sorted_array)`, where `swaps` is a list of tuples and `sorted_array` is the result AFTER applying all swaps to a copy of vector.
+    • Include `import json` and a CLI entry point: when executed, parse `sys.argv[1]` as JSON vector, fallback [3,1,2] if missing or invalid, and print only one JSON object `{"swaps": swaps, "sorted_array": sorted_array}`.
+    • The JSON output must be structured and parseable (double quotes for keys).
+    • Minimal example in `__main__` must use `solve([3,1,2])` and print JSON.
+    • Fully self-contained and immediately executable.
+    • Only code in the response, no explanations or Markdown.
+
+    ⚠️ Critical constraints:
+    • STRICTLY use only adjacent swaps swap(i, i+1) and circular swap swap(n-1,0).
+    • No slicing, built-in sort, or creating new arrays — work IN-PLACE on `arr = vector[:]`.
+    • **Track swaps made in each pass separately**: do not use the global swaps list to decide if a circular swap is needed — check only if the current pass made no swaps.
+    • Append all swaps to the swaps list immediately after performing them.
+    • Applying swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    
+
+Вызов llm_query с retries: {'max_retries': 1, 'backoff_factor': 1.0}
+
+1) Найдены провайдеры: [['LMArena', 'HuggingSpace', 'CohereForAI_C4AI_Command']]
+
+2) Пробую HuggingSpace with model: command-a-03-2025
+
+Получен ответ (длина: 1797), очищенный (длина: 1781):
+import json
+import sys
+from typing import List, Tuple
+def solve(vector: List[int]) -> Tuple[List[Tuple[int, int]], List[int]]:
+    """
+    Sorts a vector using only adjacent swaps and a circular swap between last and first element.
+    Args:
+        vector: Input list of integers to be sorted
+    Returns:
+        Tuple containing:
+        - List of swap operations performed (each swap is a tuple of indices)
+        - Final sorted array
+    """
+    n = len(vector)
+    if n <= 1:
+        return [], vector.copy()
+    arr = vector[:]
+    swaps = []
+    while True:
+        pass_swaps = []
+        sorted_pass = True
+        # Perform adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                pass_swaps.append((i, i + 1))
+                sorted_pass = False
+        # If no swaps were made in the entire pass, array is sorted
+        if sorted_pass:
+            break
+        # If no swaps were made in this pass, try a circular swap
+        if not pass_swaps:
+            if arr[-1] < arr[0]:
+                arr[-1], arr[0] = arr[0], arr[-1]
+                pass_swaps.append((n - 1, 0))
+        swaps.extend(pass_swaps)
+    return swaps, arr
+if __name__ == "__main__":
+    # CLI interface
+    if len(sys.argv) > 1:
+        try:
+            vector = json.loads(sys.argv[1])
+        except json.JSONDecodeError:
+            vector = [3, 1, 2]
+    else:
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    result = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(result, indent=2))
+    # Minimal example for quick testing
+    swaps, sorted_array = solve([3, 1, 2])
+    print(json.dumps({"swaps": swaps, "sorted_array": sorted_array}, indent=2))
+
+Этап: Тестирование первичного кода (длина: 1781)
+
+Результат test_code: success=False, num_failing=25
+
+Тесты провалены. Этап исправления: исправление_до_рефакторинга
+
+Промпт для исправления (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    import json
+import sys
+from typing import List, Tuple
+def solve(vector: List[int]) -> Tuple[List[Tuple[int, int]], List[int]]:
+    """
+    Sorts a vector using only adjacent swaps and a circular swap between last and first element.
+    Args:
+        vector: Input list of integers to be sorted
+    Returns:
+        Tuple containing:
+        - List of swap operations performed (each swap is a tuple of indices)
+        - Final sorted array
+    """
+    n = len(vector)
+    if n <= 1:
+        return [], vector.copy()
+    arr = vector[:]
+    swaps = []
+    while True:
+        pass_swaps = []
+        sorted_pass = True
+        # Perform adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                pass_swaps.append((i, i + 1))
+                sorted_pass = False
+        # If no swaps were made in the entire pass, array is sorted
+        if sorted_pass:
+            break
+        # If no swaps were made in this pass, try a circular swap
+        if not pass_swaps:
+            if arr[-1] < arr[0]:
+                arr[-1], arr[0] = arr[0], arr[-1]
+                pass_swaps.append((n - 1, 0))
+        swaps.extend(pass_swaps)
+    return swaps, arr
+if __name__ == "__main__":
+    # CLI interface
+    if len(sys.argv) > 1:
+        try:
+            vector = json.loads(sys.argv[1])
+        except json.JSONDecodeError:
+            vector = [3, 1, 2]
+    else:
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    result = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(result, indent=2))
+    # Minimal example for quick testing
+    swaps, sorted_array = solve([3, 1, 2])
+    print(json.dumps({"swaps": swaps, "sorted_array": sorted_array}, indent=2))
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "JSON parse error: Extra data: line 18 column 1 (char 125)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "JSON parse error: Extra data: line 18 column 1 (char 125)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "JSON parse error: Extra data: line 40 column 1 (char 289)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "JSON parse error: Extra data: line 19 column 1 (char 133)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "JSON parse error: Extra data: line 20 column 1 (char 143)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "JSON parse error: Extra data: line 37 column 1 (char 271)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "JSON parse error: Extra data: line 58 column 1 (char 430)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "JSON parse error: Extra data: line 18 column 1 (char 125)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        5,
+        4,
+        22,
+        37
+      ],
+      "error": "JSON parse error: Extra data: line 15 column 1 (char 104)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        16,
+        3,
+        48,
+        28,
+        43
+      ],
+      "error": "JSON parse error: Extra data: line 24 column 1 (char 173)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        31,
+        30,
+        2,
+        42,
+        19,
+        37
+      ],
+      "error": "JSON parse error: Extra data: line 41 column 1 (char 301)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        24,
+        55,
+        1,
+        21,
+        13,
+        20,
+        25
+      ],
+      "error": "JSON parse error: Extra data: line 58 column 1 (char 429)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        32,
+        47,
+        1,
+        51,
+        32,
+        27,
+        13,
+        79
+      ],
+      "error": "JSON parse error: Extra data: line 67 column 1 (char 497)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        61,
+        2,
+        50,
+        90,
+        55,
+        12,
+        71,
+        18,
+        15
+      ],
+      "error": "JSON parse error: Extra data: line 96 column 1 (char 715)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        1,
+        41,
+        89,
+        46,
+        28,
+        70,
+        14,
+        4,
+        25,
+        62
+      ],
+      "error": "JSON parse error: Extra data: line 109 column 1 (char 812)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        50,
+        33,
+        62,
+        41,
+        95,
+        101,
+        12,
+        42,
+        17,
+        100,
+        101
+      ],
+      "error": "JSON parse error: Extra data: line 102 column 1 (char 765)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        11,
+        59,
+        68,
+        96,
+        90,
+        113,
+        68,
+        63,
+        23,
+        40,
+        50,
+        54
+      ],
+      "error": "JSON parse error: Extra data: line 167 column 1 (char 1255)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        90,
+        99,
+        7,
+        22,
+        86,
+        114,
+        69,
+        83,
+        15,
+        58,
+        31,
+        46,
+        101
+      ],
+      "error": "JSON parse error: Extra data: line 188 column 1 (char 1415)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        106,
+        10,
+        139,
+        55,
+        35,
+        96,
+        20,
+        94,
+        131,
+        100,
+        70,
+        4,
+        65,
+        133
+      ],
+      "error": "JSON parse error: Extra data: line 201 column 1 (char 1521)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        136,
+        145,
+        0,
+        51,
+        5,
+        87,
+        90,
+        121,
+        123,
+        86,
+        139,
+        81,
+        107,
+        119,
+        110
+      ],
+      "error": "JSON parse error: Extra data: line 206 column 1 (char 1575)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        13,
+        119,
+        60,
+        2,
+        95,
+        99,
+        56,
+        119,
+        85,
+        51,
+        143,
+        7,
+        53,
+        18,
+        142,
+        68
+      ],
+      "error": "JSON parse error: Extra data: line 251 column 1 (char 1912)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        66,
+        121,
+        152,
+        61,
+        92,
+        122,
+        87,
+        165,
+        154,
+        34,
+        82,
+        139,
+        65,
+        122,
+        85,
+        83,
+        150
+      ],
+      "error": "JSON parse error: Extra data: line 288 column 1 (char 2210)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        94,
+        36,
+        163,
+        84,
+        103,
+        6,
+        57,
+        9,
+        94,
+        169,
+        76,
+        58,
+        45,
+        165,
+        158,
+        146,
+        38,
+        133
+      ],
+      "error": "JSON parse error: Extra data: line 301 column 1 (char 2311)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        151,
+        19,
+        117,
+        12,
+        51,
+        127,
+        4,
+        88,
+        98,
+        78,
+        71,
+        152,
+        175,
+        185,
+        118,
+        50,
+        151,
+        160,
+        12
+      ],
+      "error": "JSON parse error: Extra data: line 302 column 1 (char 2322)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        36,
+        56,
+        124,
+        199,
+        57,
+        104,
+        1,
+        78,
+        145,
+        9,
+        119,
+        145,
+        135,
+        14,
+        40,
+        24,
+        119,
+        15,
+        162,
+        6
+      ],
+      "error": "JSON parse error: Extra data: line 427 column 1 (char 3291)",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['LMArena', 'HuggingSpace', 'CohereForAI_C4AI_Command']]
+
+2) Пробую LMArena with model: command-a-03-2025
+
+3) Ошибка Failed to perform, curl: (77) error setting certificate verify locations:  CAfile: C:\Users\Иван Литвак\AppData\Local\Programs\Python\Python311\Lib\site-packages\certifi\cacert.pem CApath: none. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.
+
+2) Пробую CohereForAI_C4AI_Command with model: command-a-03-2025
+
+Получен исправленный код (длина: 1645), очищенный (длина: 1643):
+import json
+import sys
+from typing import List, Tuple
+def solve(vector: List[int]) -> Tuple[List[Tuple[int, int]], List[int]]:
+    """
+    Sorts a vector using only adjacent swaps and a circular swap between last and first element.
+    Args:
+        vector: Input list of integers to be sorted
+    Returns:
+        Tuple containing:
+        - List of swap operations performed (each swap is a tuple of indices)
+        - Final sorted array
+    """
+    n = len(vector)
+    if n <= 1:
+        return [], vector.copy()
+    
+    arr = vector.copy()
+    swaps = []
+    
+    while True:
+        pass_swaps = []
+        sorted_pass = True
+        
+        # Perform adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                pass_swaps.append((i, i + 1))
+                sorted_pass = False
+        
+        # If no swaps were made in the entire pass, array is sorted
+        if sorted_pass:
+            break
+        
+        # Perform circular swap only if no adjacent swaps were made in this pass
+        if not pass_swaps and arr[-1] < arr[0]:
+            arr[-1], arr[0] = arr[0], arr[-1]
+            pass_swaps.append((n - 1, 0))
+        
+        swaps.extend(pass_swaps)
+    
+    return swaps, arr
+if __name__ == "__main__":
+    try:
+        if len(sys.argv) > 1:
+            vector = json.loads(sys.argv[1])
+        else:
+            vector = [3, 1, 2]
+    except json.JSONDecodeError:
+        vector = [3, 1, 2]
+    
+    swaps, sorted_array = solve(vector)
+    result = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(result))
+
+Этап: Первый рефакторинг ответ_от_рефакторинга
+
+Промпт для рефакторинга (полный):
+
+    You are an expert Python programmer. Refactor the following code:
+
+    import json
+import sys
+from typing import List, Tuple
+def solve(vector: List[int]) -> Tuple[List[Tuple[int, int]], List[int]]:
+    """
+    Sorts a vector using only adjacent swaps and a circular swap between last and first element.
+    Args:
+        vector: Input list of integers to be sorted
+    Returns:
+        Tuple containing:
+        - List of swap operations performed (each swap is a tuple of indices)
+        - Final sorted array
+    """
+    n = len(vector)
+    if n <= 1:
+        return [], vector.copy()
+    
+    arr = vector.copy()
+    swaps = []
+    
+    while True:
+        pass_swaps = []
+        sorted_pass = True
+        
+        # Perform adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                pass_swaps.append((i, i + 1))
+                sorted_pass = False
+        
+        # If no swaps were made in the entire pass, array is sorted
+        if sorted_pass:
+            break
+        
+        # Perform circular swap only if no adjacent swaps were made in this pass
+        if not pass_swaps and arr[-1] < arr[0]:
+            arr[-1], arr[0] = arr[0], arr[-1]
+            pass_swaps.append((n - 1, 0))
+        
+        swaps.extend(pass_swaps)
+    
+    return swaps, arr
+if __name__ == "__main__":
+    try:
+        if len(sys.argv) > 1:
+            vector = json.loads(sys.argv[1])
+        else:
+            vector = [3, 1, 2]
+    except json.JSONDecodeError:
+        vector = [3, 1, 2]
+    
+    swaps, sorted_array = solve(vector)
+    result = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(result))
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency and correctness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2], print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Ensure circular swap is triggered correctly when the current pass has no adjacent swaps**.
+    • Fully executable, immediately correct, passes verification for n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['LMArena', 'HuggingSpace', 'CohereForAI_C4AI_Command']]
+
+2) Пробую HuggingSpace with model: command-a-03-2025
+
+Получен рефакторированный код (длина: 1579), очищенный (длина: 1567):
+import json
+import sys
+from typing import List, Tuple
+def solve(vector: List[int]) -> Tuple[List[Tuple[int, int]], List[int]]:
+    """
+    Sorts a vector using only adjacent swaps and a circular swap between last and first element.
+    Args:
+        vector: Input list of integers to be sorted
+    Returns:
+        Tuple containing:
+        - List of swap operations performed (each swap is a tuple of indices)
+        - Final sorted array
+    """
+    n = len(vector)
+    if n <= 1:
+        return [], vector.copy()
+    arr = vector.copy()
+    swaps = []
+    while True:
+        pass_swaps = []
+        sorted_pass = True
+        # Perform adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                pass_swaps.append((i, i + 1))
+                sorted_pass = False
+        # If no swaps were made in the entire pass, array is sorted
+        if sorted_pass:
+            break
+        swaps.extend(pass_swaps)
+        # Perform circular swap only if no adjacent swaps were made in this pass
+        if not pass_swaps and arr[-1] < arr[0]:
+            arr[-1], arr[0] = arr[0], arr[-1]
+            swaps.append((n - 1, 0))
+    return swaps, arr
+if __name__ == "__main__":
+    try:
+        vector = (
+            json.loads(sys.argv[1])
+            if len(sys.argv) > 1
+            else [3, 1, 2]
+        )
+    except json.JSONDecodeError:
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    print(json.dumps({"swaps": swaps, "sorted_array": sorted_array}))
+
+Этап: Тестирование после рефакторинга (длина: 1567)
+
+Результат test_code после refactor: success=True, num_failing=0
+
+Финальное тестирование: success=True, num_failing=0
+
+=== ОТЧЁТ ПО ФИНАЛЬНОМУ ТЕСТИРОВАНИЮ ===
+
+n | Input Vector | Swaps Count | Time (s) | Applied Swaps Seq. | Output Array
+--------------------------------------------------------------------------------
+4 | [6, 27, 49, 39, 40] | 2 | 0.054 | [(2, 3), (3, 4)] | [6, 27, 39, 40, 49]
+5 | [51, 3, 22, 22, 39, 25] | 6 | 0.058 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (3, 4)] | [3, 22, 22, 25, 39, 51]
+6 | [48, 18, 44, 20, 16, 61, 26] | 11 | 0.055 | [(0, 1), (1, 2), (2, 3), (3, 4), (5, 6), (1, 2), (... | [16, 18, 20, 26, 44, 48, 61]
+7 | [2, 3, 1] | 2 | 0.056 | [(1, 2), (0, 1)] | [1, 2, 3]
+8 | [14, 25, 4, 6] | 4 | 0.056 | [(1, 2), (2, 3), (0, 1), (1, 2)] | [4, 6, 14, 25]
+9 | [17, 23, 11, 21, 38] | 3 | 0.055 | [(1, 2), (2, 3), (0, 1)] | [11, 17, 21, 23, 38]
+10 | [14, 10, 17, 24, 3, 24] | 5 | 0.052 | [(0, 1), (3, 4), (2, 3), (1, 2), (0, 1)] | [3, 10, 14, 17, 24, 24]
+11 | [48, 49, 61, 68, 7, 50, 10] | 11 | 0.053 | [(3, 4), (4, 5), (5, 6), (2, 3), (3, 4), (4, 5), (... | [7, 10, 48, 49, 50, 61, 68]
+12 | [30, 17, 21, 33, 9, 3, 73, 1] | 18 | 0.054 | [(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (2, 3), (... | [1, 3, 9, 17, 21, 30, 33, 73]
+13 | [77, 11, 0, 83, 73, 35, 13, 34, 78] | 17 | 0.050 | [(0, 1), (1, 2), (3, 4), (4, 5), (5, 6), (6, 7), (... | [0, 11, 13, 34, 35, 73, 77, 78, 83]
+14 | [30, 20, 31, 34, 57, 66, 67, 26, 75, 34] | 11 | 0.051 | [(0, 1), (6, 7), (8, 9), (5, 6), (7, 8), (4, 5), (... | [20, 26, 30, 31, 34, 34, 57, 66, 67, 75]
+15 | [32, 77, 26, 90, 18, 66, 12, 55, 8, 31, 41] | 34 | 0.050 | [(1, 2), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (... | [8, 12, 18, 26, 31, 32, 41, 55, 66, 77, 90]
+16 | [114, 83, 58, 26, 69, 108, 34, 16, 13, 83, 91, 36] | 40 | 0.050 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (... | [13, 16, 26, 34, 36, 58, 69, 83, 83, 91, 108, 114]
+17 | [55, 116, 119, 120, 77, 50, 110, 108, 58, 107, 55, 31, 0] | 57 | 0.050 | [(3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (... | [0, 31, 50, 55, 55, 58, 77, 107, 108, 110, 116, 119, 120]
+18 | [76, 62, 82, 22, 111, 23, 47, 106, 124, 39, 40, 101, 131, 129] | 31 | 0.053 | [(0, 1), (2, 3), (4, 5), (5, 6), (6, 7), (8, 9), (... | [22, 23, 39, 40, 47, 62, 76, 82, 101, 106, 111, 124, 129, 131]
+19 | [39, 52, 65, 43, 150, 45, 130, 35, 28, 49, 32, 47, 116, 135, 107] | 46 | 0.053 | [(2, 3), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (... | [28, 32, 35, 39, 43, 45, 47, 49, 52, 65, 107, 116, 130, 135, 150]
+20 | [123, 94, 126, 17, 124, 152, 36, 31, 48, 87, 43, 84, 144, 90, 62, 149] | 56 | 0.052 | [(0, 1), (2, 3), (3, 4), (5, 6), (6, 7), (7, 8), (... | [17, 31, 36, 43, 48, 62, 84, 87, 90, 94, 123, 124, 126, 144, 149, 152]
+
+Общее время тестов: 1.34 с
+
+Максимальное потребление памяти (примерно): 3852 КБ
+
+=== ФИНАЛЬНЫЙ КОД (длина: 1567):
+import json
+import sys
+from typing import List, Tuple
+def solve(vector: List[int]) -> Tuple[List[Tuple[int, int]], List[int]]:
+    """
+    Sorts a vector using only adjacent swaps and a circular swap between last and first element.
+    Args:
+        vector: Input list of integers to be sorted
+    Returns:
+        Tuple containing:
+        - List of swap operations performed (each swap is a tuple of indices)
+        - Final sorted array
+    """
+    n = len(vector)
+    if n <= 1:
+        return [], vector.copy()
+    arr = vector.copy()
+    swaps = []
+    while True:
+        pass_swaps = []
+        sorted_pass = True
+        # Perform adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                pass_swaps.append((i, i + 1))
+                sorted_pass = False
+        # If no swaps were made in the entire pass, array is sorted
+        if sorted_pass:
+            break
+        swaps.extend(pass_swaps)
+        # Perform circular swap only if no adjacent swaps were made in this pass
+        if not pass_swaps and arr[-1] < arr[0]:
+            arr[-1], arr[0] = arr[0], arr[-1]
+            swaps.append((n - 1, 0))
+    return swaps, arr
+if __name__ == "__main__":
+    try:
+        vector = (
+            json.loads(sys.argv[1])
+            if len(sys.argv) > 1
+            else [3, 1, 2]
+        )
+    except json.JSONDecodeError:
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    print(json.dumps({"swaps": swaps, "sorted_array": sorted_array}))
+
+=== КОНЕЦ ОБРАБОТКИ МОДЕЛИ: command-a-03-2025 ===

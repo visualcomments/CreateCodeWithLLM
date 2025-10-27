@@ -1,0 +1,2430 @@
+=== НАЧАЛО ОБРАБОТКИ МОДЕЛИ: command-r-plus24 ===
+
+Этап: первичный_ответ. Полный промпт:
+
+    You are a Python programming assistant. Write a fully working Python module 
+    for the following task:
+
+    
+
+    Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed swaps.
+
+    Input: A vector `a` of length `n` (0-indexed).
+
+    Allowed operations:
+    - swap(i, i+1) for i = 0..n-2 (adjacent swap)
+    - swap(n-1, 0) — a circular swap between the last and the first element
+
+    Strict constraints:
+    - No other swaps, slicing, built-in sorting functions, or creating new arrays are allowed.
+    - All swaps must be appended to the `swaps` list immediately after performing them.
+    - Applying the swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    - Circular swaps can ONLY be performed as swap(n-1, 0), never as swap(i, n-1-i) or any other non-adjacent pair.
+
+    Critical clarification:
+    - Circular swaps may be used multiple times as needed during the sorting process.
+    - The sorting algorithm must continue applying swaps until the array is fully sorted.
+
+    Requirements:
+    1. Implement a function `solve(vector)` that returns a tuple `(swaps, sorted_array)`:
+        - `swaps` is a list of tuples representing all swaps performed.
+        - `sorted_array` is the final sorted array after applying all swaps to a copy of the input vector.
+    2. Include a CLI interface:
+        - When the script is executed directly, it should accept a vector as a **command-line argument**.
+        - The output should be a **JSON object** with keys `"swaps"` and `"sorted_array"`.
+    3. Include a minimal example in the `__main__` block for quick testing.
+    4. The code must be fully self-contained and executable without external dependencies.
+    5. JSON output must always be structured and parseable for automated testing.
+
+    Example expected usage:
+
+    ```bash
+    python solve_module.py "[3,1,2,5,4]"
+    
+
+    ⚠️ Requirements:
+    • Implement a function `solve(vector)` that sorts the vector using only adjacent swaps and circular swap `(n-1,0)`.
+    • Return a tuple `(swaps, sorted_array)`, where `swaps` is a list of tuples and `sorted_array` is the result AFTER applying all swaps to a copy of vector.
+    • Include `import json` and a CLI entry point: when executed, parse `sys.argv[1]` as JSON vector, fallback [3,1,2] if missing or invalid, and print only one JSON object `{"swaps": swaps, "sorted_array": sorted_array}`.
+    • The JSON output must be structured and parseable (double quotes for keys).
+    • Minimal example in `__main__` must use `solve([3,1,2])` and print JSON.
+    • Fully self-contained and immediately executable.
+    • Only code in the response, no explanations or Markdown.
+
+    ⚠️ Critical constraints:
+    • STRICTLY use only adjacent swaps swap(i, i+1) and circular swap swap(n-1,0).
+    • No slicing, built-in sort, or creating new arrays — work IN-PLACE on `arr = vector[:]`.
+    • **Track swaps made in each pass separately**: do not use the global swaps list to decide if a circular swap is needed — check only if the current pass made no swaps.
+    • Append all swaps to the swaps list immediately after performing them.
+    • Applying swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    
+
+Вызов llm_query с retries: {'max_retries': 1, 'backoff_factor': 1.0}
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую HuggingFace with model: CohereForAI/c4ai-command-r-plus-08-2024
+
+3) Ошибка Add a "api_key"
+
+2) Пробую CohereForAI_C4AI_Command with model: command-r-plus-08-2024
+
+Получен ответ (длина: 976), очищенный (длина: 955):
+import json
+import sys
+def solve(vector):
+    swaps = []
+    arr = vector[:]
+    n = len(arr)
+    def bubble_sort():
+        no_swaps = True
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps.append((i, i + 1))
+                no_swaps = False
+        if no_swaps:
+            if arr[0] > arr[n - 1]:
+                arr[0], arr[n - 1] = arr[n - 1], arr[0]
+                swaps.append((n - 1, 0))
+    while swaps:
+        bubble_sort()
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector [3, 1, 2].")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+Этап: Тестирование первичного кода (длина: 955)
+
+Результат test_code: success=False, num_failing=25
+
+Тесты провалены. Этап исправления: исправление_до_рефакторинга
+
+Промпт для исправления (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    import json
+import sys
+def solve(vector):
+    swaps = []
+    arr = vector[:]
+    n = len(arr)
+    def bubble_sort():
+        no_swaps = True
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps.append((i, i + 1))
+                no_swaps = False
+        if no_swaps:
+            if arr[0] > arr[n - 1]:
+                arr[0], arr[n - 1] = arr[n - 1], arr[0]
+                swaps.append((n - 1, 0))
+    while swaps:
+        bubble_sort()
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector [3, 1, 2].")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        3,
+        1,
+        2
+      ],
+      "expected": [
+        1,
+        2,
+        3
+      ],
+      "sorted_array": [
+        3,
+        1,
+        2
+      ]
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        1,
+        2,
+        0
+      ],
+      "expected": [
+        0,
+        1,
+        2
+      ],
+      "sorted_array": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "expected": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sorted_array": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ]
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "expected": [
+        0,
+        0,
+        3,
+        31
+      ],
+      "sorted_array": [
+        0,
+        3,
+        31,
+        0
+      ]
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "expected": [
+        6,
+        27,
+        39,
+        40,
+        49
+      ],
+      "sorted_array": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ]
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "expected": [
+        3,
+        22,
+        22,
+        25,
+        39,
+        51
+      ],
+      "sorted_array": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ]
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "expected": [
+        16,
+        18,
+        20,
+        26,
+        44,
+        48,
+        61
+      ],
+      "sorted_array": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ]
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        2,
+        3,
+        1
+      ],
+      "expected": [
+        1,
+        2,
+        3
+      ],
+      "sorted_array": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "n": 4,
+      "input": [
+        11,
+        39,
+        38,
+        40
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        11,
+        39,
+        38,
+        40
+      ],
+      "expected": [
+        11,
+        38,
+        39,
+        40
+      ],
+      "sorted_array": [
+        11,
+        39,
+        38,
+        40
+      ]
+    },
+    {
+      "n": 5,
+      "input": [
+        35,
+        35,
+        50,
+        0,
+        21
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        35,
+        35,
+        50,
+        0,
+        21
+      ],
+      "expected": [
+        0,
+        21,
+        35,
+        35,
+        50
+      ],
+      "sorted_array": [
+        35,
+        35,
+        50,
+        0,
+        21
+      ]
+    },
+    {
+      "n": 6,
+      "input": [
+        1,
+        7,
+        42,
+        28,
+        4,
+        2
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        1,
+        7,
+        42,
+        28,
+        4,
+        2
+      ],
+      "expected": [
+        1,
+        2,
+        4,
+        7,
+        28,
+        42
+      ],
+      "sorted_array": [
+        1,
+        7,
+        42,
+        28,
+        4,
+        2
+      ]
+    },
+    {
+      "n": 7,
+      "input": [
+        29,
+        13,
+        60,
+        27,
+        53,
+        44,
+        23
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        29,
+        13,
+        60,
+        27,
+        53,
+        44,
+        23
+      ],
+      "expected": [
+        13,
+        23,
+        27,
+        29,
+        44,
+        53,
+        60
+      ],
+      "sorted_array": [
+        29,
+        13,
+        60,
+        27,
+        53,
+        44,
+        23
+      ]
+    },
+    {
+      "n": 8,
+      "input": [
+        15,
+        70,
+        65,
+        27,
+        62,
+        48,
+        15,
+        26
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        15,
+        70,
+        65,
+        27,
+        62,
+        48,
+        15,
+        26
+      ],
+      "expected": [
+        15,
+        15,
+        26,
+        27,
+        48,
+        62,
+        65,
+        70
+      ],
+      "sorted_array": [
+        15,
+        70,
+        65,
+        27,
+        62,
+        48,
+        15,
+        26
+      ]
+    },
+    {
+      "n": 9,
+      "input": [
+        82,
+        85,
+        56,
+        66,
+        79,
+        39,
+        10,
+        63,
+        37
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        82,
+        85,
+        56,
+        66,
+        79,
+        39,
+        10,
+        63,
+        37
+      ],
+      "expected": [
+        10,
+        37,
+        39,
+        56,
+        63,
+        66,
+        79,
+        82,
+        85
+      ],
+      "sorted_array": [
+        82,
+        85,
+        56,
+        66,
+        79,
+        39,
+        10,
+        63,
+        37
+      ]
+    },
+    {
+      "n": 10,
+      "input": [
+        60,
+        39,
+        41,
+        91,
+        87,
+        19,
+        14,
+        2,
+        85,
+        71
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        60,
+        39,
+        41,
+        91,
+        87,
+        19,
+        14,
+        2,
+        85,
+        71
+      ],
+      "expected": [
+        2,
+        14,
+        19,
+        39,
+        41,
+        60,
+        71,
+        85,
+        87,
+        91
+      ],
+      "sorted_array": [
+        60,
+        39,
+        41,
+        91,
+        87,
+        19,
+        14,
+        2,
+        85,
+        71
+      ]
+    },
+    {
+      "n": 11,
+      "input": [
+        95,
+        4,
+        85,
+        45,
+        62,
+        39,
+        12,
+        108,
+        21,
+        63,
+        36
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        95,
+        4,
+        85,
+        45,
+        62,
+        39,
+        12,
+        108,
+        21,
+        63,
+        36
+      ],
+      "expected": [
+        4,
+        12,
+        21,
+        36,
+        39,
+        45,
+        62,
+        63,
+        85,
+        95,
+        108
+      ],
+      "sorted_array": [
+        95,
+        4,
+        85,
+        45,
+        62,
+        39,
+        12,
+        108,
+        21,
+        63,
+        36
+      ]
+    },
+    {
+      "n": 12,
+      "input": [
+        117,
+        23,
+        6,
+        47,
+        50,
+        17,
+        80,
+        112,
+        38,
+        53,
+        18,
+        7
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        117,
+        23,
+        6,
+        47,
+        50,
+        17,
+        80,
+        112,
+        38,
+        53,
+        18,
+        7
+      ],
+      "expected": [
+        6,
+        7,
+        17,
+        18,
+        23,
+        38,
+        47,
+        50,
+        53,
+        80,
+        112,
+        117
+      ],
+      "sorted_array": [
+        117,
+        23,
+        6,
+        47,
+        50,
+        17,
+        80,
+        112,
+        38,
+        53,
+        18,
+        7
+      ]
+    },
+    {
+      "n": 13,
+      "input": [
+        47,
+        70,
+        41,
+        122,
+        117,
+        108,
+        21,
+        117,
+        74,
+        76,
+        92,
+        123,
+        70
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        47,
+        70,
+        41,
+        122,
+        117,
+        108,
+        21,
+        117,
+        74,
+        76,
+        92,
+        123,
+        70
+      ],
+      "expected": [
+        21,
+        41,
+        47,
+        70,
+        70,
+        74,
+        76,
+        92,
+        108,
+        117,
+        117,
+        122,
+        123
+      ],
+      "sorted_array": [
+        47,
+        70,
+        41,
+        122,
+        117,
+        108,
+        21,
+        117,
+        74,
+        76,
+        92,
+        123,
+        70
+      ]
+    },
+    {
+      "n": 14,
+      "input": [
+        50,
+        110,
+        132,
+        38,
+        107,
+        57,
+        124,
+        135,
+        52,
+        97,
+        42,
+        134,
+        138,
+        133
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        50,
+        110,
+        132,
+        38,
+        107,
+        57,
+        124,
+        135,
+        52,
+        97,
+        42,
+        134,
+        138,
+        133
+      ],
+      "expected": [
+        38,
+        42,
+        50,
+        52,
+        57,
+        97,
+        107,
+        110,
+        124,
+        132,
+        133,
+        134,
+        135,
+        138
+      ],
+      "sorted_array": [
+        50,
+        110,
+        132,
+        38,
+        107,
+        57,
+        124,
+        135,
+        52,
+        97,
+        42,
+        134,
+        138,
+        133
+      ]
+    },
+    {
+      "n": 15,
+      "input": [
+        120,
+        144,
+        101,
+        136,
+        30,
+        115,
+        71,
+        24,
+        139,
+        51,
+        0,
+        107,
+        113,
+        85,
+        72
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        120,
+        144,
+        101,
+        136,
+        30,
+        115,
+        71,
+        24,
+        139,
+        51,
+        0,
+        107,
+        113,
+        85,
+        72
+      ],
+      "expected": [
+        0,
+        24,
+        30,
+        51,
+        71,
+        72,
+        85,
+        101,
+        107,
+        113,
+        115,
+        120,
+        136,
+        139,
+        144
+      ],
+      "sorted_array": [
+        120,
+        144,
+        101,
+        136,
+        30,
+        115,
+        71,
+        24,
+        139,
+        51,
+        0,
+        107,
+        113,
+        85,
+        72
+      ]
+    },
+    {
+      "n": 16,
+      "input": [
+        135,
+        66,
+        89,
+        41,
+        145,
+        100,
+        157,
+        122,
+        32,
+        104,
+        44,
+        17,
+        87,
+        5,
+        10,
+        128
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        135,
+        66,
+        89,
+        41,
+        145,
+        100,
+        157,
+        122,
+        32,
+        104,
+        44,
+        17,
+        87,
+        5,
+        10,
+        128
+      ],
+      "expected": [
+        5,
+        10,
+        17,
+        32,
+        41,
+        44,
+        66,
+        87,
+        89,
+        100,
+        104,
+        122,
+        128,
+        135,
+        145,
+        157
+      ],
+      "sorted_array": [
+        135,
+        66,
+        89,
+        41,
+        145,
+        100,
+        157,
+        122,
+        32,
+        104,
+        44,
+        17,
+        87,
+        5,
+        10,
+        128
+      ]
+    },
+    {
+      "n": 17,
+      "input": [
+        21,
+        130,
+        50,
+        105,
+        22,
+        169,
+        81,
+        46,
+        80,
+        104,
+        80,
+        75,
+        46,
+        107,
+        18,
+        166,
+        84
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        21,
+        130,
+        50,
+        105,
+        22,
+        169,
+        81,
+        46,
+        80,
+        104,
+        80,
+        75,
+        46,
+        107,
+        18,
+        166,
+        84
+      ],
+      "expected": [
+        18,
+        21,
+        22,
+        46,
+        46,
+        50,
+        75,
+        80,
+        80,
+        81,
+        84,
+        104,
+        105,
+        107,
+        130,
+        166,
+        169
+      ],
+      "sorted_array": [
+        21,
+        130,
+        50,
+        105,
+        22,
+        169,
+        81,
+        46,
+        80,
+        104,
+        80,
+        75,
+        46,
+        107,
+        18,
+        166,
+        84
+      ]
+    },
+    {
+      "n": 18,
+      "input": [
+        120,
+        32,
+        68,
+        28,
+        50,
+        106,
+        94,
+        114,
+        152,
+        87,
+        144,
+        54,
+        130,
+        145,
+        54,
+        167,
+        38,
+        8
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        120,
+        32,
+        68,
+        28,
+        50,
+        106,
+        94,
+        114,
+        152,
+        87,
+        144,
+        54,
+        130,
+        145,
+        54,
+        167,
+        38,
+        8
+      ],
+      "expected": [
+        8,
+        28,
+        32,
+        38,
+        50,
+        54,
+        54,
+        68,
+        87,
+        94,
+        106,
+        114,
+        120,
+        130,
+        144,
+        145,
+        152,
+        167
+      ],
+      "sorted_array": [
+        120,
+        32,
+        68,
+        28,
+        50,
+        106,
+        94,
+        114,
+        152,
+        87,
+        144,
+        54,
+        130,
+        145,
+        54,
+        167,
+        38,
+        8
+      ]
+    },
+    {
+      "n": 19,
+      "input": [
+        37,
+        172,
+        151,
+        36,
+        95,
+        142,
+        161,
+        134,
+        79,
+        116,
+        130,
+        101,
+        48,
+        49,
+        16,
+        17,
+        102,
+        188,
+        148
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        37,
+        172,
+        151,
+        36,
+        95,
+        142,
+        161,
+        134,
+        79,
+        116,
+        130,
+        101,
+        48,
+        49,
+        16,
+        17,
+        102,
+        188,
+        148
+      ],
+      "expected": [
+        16,
+        17,
+        36,
+        37,
+        48,
+        49,
+        79,
+        95,
+        101,
+        102,
+        116,
+        130,
+        134,
+        142,
+        148,
+        151,
+        161,
+        172,
+        188
+      ],
+      "sorted_array": [
+        37,
+        172,
+        151,
+        36,
+        95,
+        142,
+        161,
+        134,
+        79,
+        116,
+        130,
+        101,
+        48,
+        49,
+        16,
+        17,
+        102,
+        188,
+        148
+      ]
+    },
+    {
+      "n": 20,
+      "input": [
+        153,
+        99,
+        72,
+        147,
+        156,
+        51,
+        115,
+        58,
+        123,
+        55,
+        183,
+        169,
+        127,
+        76,
+        151,
+        98,
+        184,
+        166,
+        107,
+        50
+      ],
+      "error": "Mismatch after swaps",
+      "swaps": [],
+      "applied_swaps": [],
+      "result_array": [
+        153,
+        99,
+        72,
+        147,
+        156,
+        51,
+        115,
+        58,
+        123,
+        55,
+        183,
+        169,
+        127,
+        76,
+        151,
+        98,
+        184,
+        166,
+        107,
+        50
+      ],
+      "expected": [
+        50,
+        51,
+        55,
+        58,
+        72,
+        76,
+        98,
+        99,
+        107,
+        115,
+        123,
+        127,
+        147,
+        151,
+        153,
+        156,
+        166,
+        169,
+        183,
+        184
+      ],
+      "sorted_array": [
+        153,
+        99,
+        72,
+        147,
+        156,
+        51,
+        115,
+        58,
+        123,
+        55,
+        183,
+        169,
+        127,
+        76,
+        151,
+        98,
+        184,
+        166,
+        107,
+        50
+      ]
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую OpenRouter with model: command-r-plus-08-2024
+
+3) Ошибка Add a "api_key"
+
+2) Пробую CohereForAI_C4AI_Command with model: command-r-plus-08-2024
+
+Получен исправленный код (длина: 955), очищенный (длина: 935):
+import json
+import sys
+def solve(vector):
+    swaps = []
+    arr = vector[:]
+    n = len(arr)
+    def bubble_sort():
+        no_swaps = True
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps.append((i, i + 1))
+                no_swaps = False
+        if no_swaps and arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+    while swaps:
+        bubble_sort()
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector [3, 1, 2].")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+Этап: Первый рефакторинг ответ_от_рефакторинга
+
+Промпт для рефакторинга (полный):
+
+    You are an expert Python programmer. Refactor the following code:
+
+    import json
+import sys
+def solve(vector):
+    swaps = []
+    arr = vector[:]
+    n = len(arr)
+    def bubble_sort():
+        no_swaps = True
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps.append((i, i + 1))
+                no_swaps = False
+        if no_swaps and arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+    while swaps:
+        bubble_sort()
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector [3, 1, 2].")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency and correctness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2], print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Ensure circular swap is triggered correctly when the current pass has no adjacent swaps**.
+    • Fully executable, immediately correct, passes verification for n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую OpenRouter with model: command-r-plus-08-2024
+
+3) Ошибка Add a "api_key"
+
+2) Пробую CohereForAI_C4AI_Command with model: command-r-plus-08-2024
+
+Получен рефакторированный код (длина: 939), очищенный (длина: 921):
+import json
+import sys
+def bubble_sort(arr, swaps):
+    n = len(arr)
+    no_swaps = True
+    for i in range(n - 1):
+        if arr[i] > arr[i + 1]:
+            arr[i], arr[i + 1] = arr[i + 1], arr[i]
+            swaps.append((i, i + 1))
+            no_swaps = False
+    if no_swaps and arr[0] > arr[n - 1]:
+        arr[0], arr[n - 1] = arr[n - 1], arr[0]
+        swaps.append((n - 1, 0))
+def solve(vector):
+    swaps = []
+    arr = vector.copy()
+    while True:
+        bubble_sort(arr, swaps)
+        if not swaps:
+            break
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector.")
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+Этап: Тестирование после рефакторинга (длина: 921)
+
+Результат test_code после refactor: success=False, num_failing=25
+
+Тесты провалены после рефакторинга. Этап исправления: исправление_после_рефакторинга
+
+Промпт для исправления (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    import json
+import sys
+def bubble_sort(arr, swaps):
+    n = len(arr)
+    no_swaps = True
+    for i in range(n - 1):
+        if arr[i] > arr[i + 1]:
+            arr[i], arr[i + 1] = arr[i + 1], arr[i]
+            swaps.append((i, i + 1))
+            no_swaps = False
+    if no_swaps and arr[0] > arr[n - 1]:
+        arr[0], arr[n - 1] = arr[n - 1], arr[0]
+        swaps.append((n - 1, 0))
+def solve(vector):
+    swaps = []
+    arr = vector.copy()
+    while True:
+        bubble_sort(arr, swaps)
+        if not swaps:
+            break
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector.")
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        15,
+        21,
+        13,
+        8
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        44,
+        6,
+        12,
+        20,
+        8
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        37,
+        45,
+        41,
+        52,
+        19,
+        27
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        3,
+        18,
+        62,
+        19,
+        62,
+        5,
+        62
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        11,
+        63,
+        3,
+        35,
+        54,
+        2,
+        27,
+        55
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        12,
+        66,
+        42,
+        34,
+        67,
+        42,
+        9,
+        74,
+        27
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        56,
+        92,
+        72,
+        76,
+        100,
+        45,
+        11,
+        31,
+        5,
+        91
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        10,
+        49,
+        104,
+        32,
+        70,
+        98,
+        108,
+        63,
+        51,
+        76,
+        66
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        45,
+        92,
+        109,
+        23,
+        95,
+        76,
+        72,
+        105,
+        54,
+        50,
+        22,
+        10
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        94,
+        63,
+        59,
+        25,
+        59,
+        64,
+        93,
+        71,
+        14,
+        33,
+        37,
+        95,
+        116
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        81,
+        93,
+        109,
+        114,
+        1,
+        55,
+        59,
+        119,
+        51,
+        96,
+        62,
+        19,
+        58,
+        43
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        28,
+        105,
+        146,
+        97,
+        21,
+        51,
+        102,
+        38,
+        28,
+        79,
+        135,
+        146,
+        134,
+        57,
+        47
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        56,
+        124,
+        67,
+        63,
+        108,
+        151,
+        19,
+        115,
+        126,
+        47,
+        66,
+        141,
+        15,
+        119,
+        145,
+        130
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        144,
+        70,
+        102,
+        152,
+        35,
+        55,
+        37,
+        98,
+        148,
+        122,
+        69,
+        111,
+        130,
+        2,
+        80,
+        128,
+        56
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        133,
+        152,
+        89,
+        66,
+        23,
+        148,
+        104,
+        153,
+        52,
+        126,
+        95,
+        71,
+        63,
+        166,
+        88,
+        55,
+        85,
+        79
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        79,
+        150,
+        22,
+        108,
+        90,
+        155,
+        76,
+        16,
+        16,
+        133,
+        149,
+        12,
+        150,
+        90,
+        62,
+        27,
+        66,
+        63,
+        58
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        185,
+        52,
+        145,
+        158,
+        37,
+        185,
+        96,
+        151,
+        131,
+        126,
+        91,
+        158,
+        1,
+        0,
+        180,
+        29,
+        195,
+        193,
+        113,
+        50
+      ],
+      "error": "Timeout expired — the program likely entered an infinite loop. This usually happens when circular swap logic (arr[n-1] > arr[0]) is applied even after the array is already sorted, or if the input array is already sorted and the circular swap condition is not properly guarded.",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую OpenRouter with model: command-r-plus-08-2024
+
+3) Ошибка Add a "api_key"
+
+2) Пробую HuggingSpace with model: command-r-plus-08-2024
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую CohereForAI_C4AI_Command with model: command-r-plus-08-2024
+
+Получен исправленный код после refactor (длина: 1001), очищенный (длина: 983):
+import json
+import sys
+def bubble_sort(arr, swaps):
+    n = len(arr)
+    no_swaps = True
+    for i in range(n - 1):
+        if arr[i] > arr[i + 1]:
+            arr[i], arr[i + 1] = arr[i + 1], arr[i]
+            swaps.append((i, i + 1))
+            no_swaps = False
+    if no_swaps:
+        if arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+def solve(vector):
+    swaps = []
+    arr = vector.copy()
+    while True:
+        bubble_sort(arr, swaps)
+        if not swaps:
+            break
+        swaps = []
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector.")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+=== ЦИКЛ РЕФАКТОРИНГА 1 ===
+
+Этап: Рефакторинг в цикле рефакторинг_в_цикле. Промпт (полный):
+
+    You are an expert Python programmer. Compare the current and previous versions and perform a full refactor:
+
+    Current code:
+    import json
+import sys
+def bubble_sort(arr, swaps):
+    n = len(arr)
+    no_swaps = True
+    for i in range(n - 1):
+        if arr[i] > arr[i + 1]:
+            arr[i], arr[i + 1] = arr[i + 1], arr[i]
+            swaps.append((i, i + 1))
+            no_swaps = False
+    if no_swaps:
+        if arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+def solve(vector):
+    swaps = []
+    arr = vector.copy()
+    while True:
+        bubble_sort(arr, swaps)
+        if not swaps:
+            break
+        swaps = []
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector.")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+    Previous version:
+    import json
+import sys
+def solve(vector):
+    swaps = []
+    arr = vector[:]
+    n = len(arr)
+    def bubble_sort():
+        no_swaps = True
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps.append((i, i + 1))
+                no_swaps = False
+        if no_swaps and arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+    while swaps:
+        bubble_sort()
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector [3, 1, 2].")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output, indent=2))
+if __name__ == "__main__":
+    cli()
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency, robustness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2]; print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Circular swap must be performed if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Code must pass verification: applying swaps to copy(input) == sorted(input) for all n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую CohereForAI_C4AI_Command with model: command-r-plus-08-2024
+
+1) Найдены провайдеры: [['HuggingFace', 'HuggingSpace', 'CohereForAI_C4AI_Command', 'OpenRouter']]
+
+2) Пробую HuggingFace with model: CohereForAI/c4ai-command-r-plus-08-2024
+
+3) Ошибка Add a "api_key"
+
+2) Пробую HuggingSpace with model: command-r-plus-08-2024
+
+Получен рефакторированный код в цикле (длина: 994), очищенный (длина: 976):
+import json
+import sys
+def bubble_sort(arr, swaps):
+    n = len(arr)
+    for i in range(n):
+        no_swaps = True
+        for j in range(n - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swaps.append((j, j + 1))
+                no_swaps = False
+        if no_swaps and arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+        if no_swaps:
+            break
+def solve(vector):
+    swaps = []
+    arr = vector.copy()
+    bubble_sort(arr, swaps)
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector.")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output))
+if __name__ == "__main__":
+    cli()
+
+Этап: Тестирование в цикле (длина: 976)
+
+Результат test_code в цикле: success=True, num_failing=0
+
+Финальное тестирование: success=True, num_failing=0
+
+=== ОТЧЁТ ПО ФИНАЛЬНОМУ ТЕСТИРОВАНИЮ ===
+
+n | Input Vector | Swaps Count | Time (s) | Applied Swaps Seq. | Output Array
+--------------------------------------------------------------------------------
+4 | [6, 27, 49, 39, 40] | 2 | 0.104 | [(2, 3), (3, 4)] | [6, 27, 39, 40, 49]
+5 | [51, 3, 22, 22, 39, 25] | 6 | 0.101 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (3, 4)] | [3, 22, 22, 25, 39, 51]
+6 | [48, 18, 44, 20, 16, 61, 26] | 11 | 0.096 | [(0, 1), (1, 2), (2, 3), (3, 4), (5, 6), (1, 2), (... | [16, 18, 20, 26, 44, 48, 61]
+7 | [2, 3, 1] | 2 | 0.100 | [(1, 2), (0, 1)] | [1, 2, 3]
+8 | [29, 8, 1, 14] | 4 | 0.133 | [(0, 1), (1, 2), (2, 3), (0, 1)] | [1, 8, 14, 29]
+9 | [19, 18, 49, 3, 24] | 5 | 0.102 | [(0, 1), (2, 3), (3, 4), (1, 2), (0, 1)] | [3, 18, 19, 24, 49]
+10 | [7, 13, 3, 58, 10, 31] | 5 | 0.122 | [(1, 2), (3, 4), (4, 5), (0, 1), (2, 3)] | [3, 7, 10, 13, 31, 58]
+11 | [36, 1, 38, 0, 63, 56, 36] | 8 | 0.106 | [(0, 1), (2, 3), (4, 5), (5, 6), (1, 2), (4, 5), (... | [0, 1, 36, 36, 38, 56, 63]
+12 | [47, 72, 8, 27, 77, 0, 38, 38] | 15 | 0.099 | [(1, 2), (2, 3), (4, 5), (5, 6), (6, 7), (0, 1), (... | [0, 8, 27, 38, 38, 47, 72, 77]
+13 | [24, 47, 50, 86, 78, 60, 90, 11, 82] | 12 | 0.102 | [(3, 4), (4, 5), (6, 7), (7, 8), (3, 4), (5, 6), (... | [11, 24, 47, 50, 60, 78, 82, 86, 90]
+14 | [7, 55, 60, 71, 47, 4, 17, 64, 12, 58] | 22 | 0.119 | [(3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (... | [4, 7, 12, 17, 47, 55, 58, 60, 64, 71]
+15 | [44, 42, 79, 11, 2, 10, 95, 60, 103, 110, 105] | 15 | 0.076 | [(0, 1), (2, 3), (3, 4), (4, 5), (6, 7), (9, 10), ... | [2, 10, 11, 42, 44, 60, 79, 95, 103, 105, 110]
+16 | [54, 56, 74, 52, 51, 75, 102, 22, 4, 71, 71, 28] | 37 | 0.094 | [(2, 3), (3, 4), (6, 7), (7, 8), (8, 9), (9, 10), ... | [4, 22, 28, 51, 52, 54, 56, 71, 71, 74, 75, 102]
+17 | [105, 93, 79, 49, 43, 113, 94, 69, 25, 58, 97, 20, 74] | 50 | 0.091 | [(0, 1), (1, 2), (2, 3), (3, 4), (5, 6), (6, 7), (... | [20, 25, 43, 49, 58, 69, 74, 79, 93, 94, 97, 105, 113]
+18 | [132, 32, 83, 123, 41, 112, 109, 118, 110, 133, 123, 66, 41, 10] | 51 | 0.097 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (... | [10, 32, 41, 41, 66, 83, 109, 110, 112, 118, 123, 123, 132, 133]
+19 | [29, 50, 33, 127, 40, 38, 9, 119, 95, 77, 70, 32, 145, 111, 76] | 40 | 0.115 | [(1, 2), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (... | [9, 29, 32, 33, 38, 40, 50, 70, 76, 77, 95, 111, 119, 127, 145]
+20 | [107, 8, 16, 79, 43, 31, 140, 83, 9, 121, 5, 76, 153, 83, 123, 68] | 48 | 0.077 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (6, 7), (... | [5, 8, 9, 16, 31, 43, 68, 76, 79, 83, 83, 107, 121, 123, 140, 153]
+
+Общее время тестов: 2.50 с
+
+Максимальное потребление памяти (примерно): 4056 КБ
+
+=== ФИНАЛЬНЫЙ КОД (длина: 976):
+import json
+import sys
+def bubble_sort(arr, swaps):
+    n = len(arr)
+    for i in range(n):
+        no_swaps = True
+        for j in range(n - 1):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swaps.append((j, j + 1))
+                no_swaps = False
+        if no_swaps and arr[0] > arr[n - 1]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps.append((n - 1, 0))
+        if no_swaps:
+            break
+def solve(vector):
+    swaps = []
+    arr = vector.copy()
+    bubble_sort(arr, swaps)
+    return swaps, arr
+def cli():
+    try:
+        vector = json.loads(sys.argv[1]) if len(sys.argv) > 1 else [3, 1, 2]
+    except json.JSONDecodeError:
+        print("Invalid JSON input. Using default vector.")
+        vector = [3, 1, 2]
+    swaps, sorted_array = solve(vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output))
+if __name__ == "__main__":
+    cli()
+
+=== КОНЕЦ ОБРАБОТКИ МОДЕЛИ: command-r-plus24 ===

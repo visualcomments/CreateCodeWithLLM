@@ -1,0 +1,3060 @@
+=== НАЧАЛО ОБРАБОТКИ МОДЕЛИ: qwen-3-8b ===
+
+Этап: первичный_ответ. Полный промпт:
+
+    You are a Python programming assistant. Write a fully working Python module 
+    for the following task:
+
+    
+
+    Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed swaps.
+
+    Input: A vector `a` of length `n` (0-indexed).
+
+    Allowed operations:
+    - swap(i, i+1) for i = 0..n-2 (adjacent swap)
+    - swap(n-1, 0) — a circular swap between the last and the first element
+
+    Strict constraints:
+    - No other swaps, slicing, built-in sorting functions, or creating new arrays are allowed.
+    - All swaps must be appended to the `swaps` list immediately after performing them.
+    - Applying the swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    - Circular swaps can ONLY be performed as swap(n-1, 0), never as swap(i, n-1-i) or any other non-adjacent pair.
+
+    Critical clarification:
+    - Circular swaps may be used multiple times as needed during the sorting process.
+    - The sorting algorithm must continue applying swaps until the array is fully sorted.
+
+    Requirements:
+    1. Implement a function `solve(vector)` that returns a tuple `(swaps, sorted_array)`:
+        - `swaps` is a list of tuples representing all swaps performed.
+        - `sorted_array` is the final sorted array after applying all swaps to a copy of the input vector.
+    2. Include a CLI interface:
+        - When the script is executed directly, it should accept a vector as a **command-line argument**.
+        - The output should be a **JSON object** with keys `"swaps"` and `"sorted_array"`.
+    3. Include a minimal example in the `__main__` block for quick testing.
+    4. The code must be fully self-contained and executable without external dependencies.
+    5. JSON output must always be structured and parseable for automated testing.
+
+    Example expected usage:
+
+    ```bash
+    python solve_module.py "[3,1,2,5,4]"
+    
+
+    ⚠️ Requirements:
+    • Implement a function `solve(vector)` that sorts the vector using only adjacent swaps and circular swap `(n-1,0)`.
+    • Return a tuple `(swaps, sorted_array)`, where `swaps` is a list of tuples and `sorted_array` is the result AFTER applying all swaps to a copy of vector.
+    • Include `import json` and a CLI entry point: when executed, parse `sys.argv[1]` as JSON vector, fallback [3,1,2] if missing or invalid, and print only one JSON object `{"swaps": swaps, "sorted_array": sorted_array}`.
+    • The JSON output must be structured and parseable (double quotes for keys).
+    • Minimal example in `__main__` must use `solve([3,1,2])` and print JSON.
+    • Fully self-contained and immediately executable.
+    • Only code in the response, no explanations or Markdown.
+
+    ⚠️ Critical constraints:
+    • STRICTLY use only adjacent swaps swap(i, i+1) and circular swap swap(n-1,0).
+    • No slicing, built-in sort, or creating new arrays — work IN-PLACE on `arr = vector[:]`.
+    • **Track swaps made in each pass separately**: do not use the global swaps list to decide if a circular swap is needed — check only if the current pass made no swaps.
+    • Append all swaps to the swaps list immediately after performing them.
+    • Applying swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    
+
+Вызов llm_query с retries: {'max_retries': 1, 'backoff_factor': 1.0}
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую HuggingFace with model: Qwen/Qwen3-8B
+
+3) Ошибка Add a "api_key"
+
+2) Пробую HuggingSpace with model: qwen/qwen3-8b
+
+2) Пробую OpenRouterFree with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен ответ (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Этап: Тестирование первичного кода (длина: 93)
+
+Результат test_code: success=False, num_failing=25
+
+Тесты провалены. Этап исправления: исправление_до_рефакторинга
+
+Промпт для исправления (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        19,
+        36,
+        22,
+        36
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        34,
+        39,
+        48,
+        13,
+        4
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        11,
+        13,
+        52,
+        12,
+        45,
+        39
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        22,
+        39,
+        6,
+        2,
+        8,
+        15,
+        24
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        55,
+        10,
+        0,
+        77,
+        78,
+        5,
+        12,
+        52
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        33,
+        23,
+        34,
+        69,
+        88,
+        82,
+        78,
+        9,
+        86
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        47,
+        0,
+        65,
+        95,
+        13,
+        42,
+        65,
+        29,
+        48,
+        79
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        9,
+        2,
+        68,
+        74,
+        93,
+        20,
+        14,
+        55,
+        99,
+        40,
+        70
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        48,
+        97,
+        86,
+        2,
+        0,
+        57,
+        59,
+        84,
+        32,
+        51,
+        51,
+        97
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        4,
+        88,
+        35,
+        120,
+        103,
+        71,
+        67,
+        26,
+        27,
+        75,
+        59,
+        25,
+        127
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        73,
+        122,
+        33,
+        11,
+        51,
+        46,
+        15,
+        41,
+        103,
+        140,
+        95,
+        6,
+        125,
+        48
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        90,
+        120,
+        103,
+        34,
+        12,
+        70,
+        10,
+        129,
+        9,
+        102,
+        128,
+        19,
+        95,
+        79,
+        20
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        62,
+        1,
+        65,
+        117,
+        64,
+        48,
+        57,
+        48,
+        35,
+        105,
+        57,
+        0,
+        5,
+        72,
+        55,
+        65
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        71,
+        35,
+        27,
+        70,
+        19,
+        102,
+        116,
+        143,
+        109,
+        46,
+        75,
+        94,
+        159,
+        32,
+        134,
+        54,
+        71
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        112,
+        11,
+        76,
+        18,
+        34,
+        110,
+        118,
+        45,
+        30,
+        178,
+        11,
+        65,
+        132,
+        60,
+        151,
+        41,
+        14,
+        156
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        10,
+        27,
+        128,
+        118,
+        112,
+        98,
+        130,
+        139,
+        17,
+        179,
+        1,
+        67,
+        167,
+        87,
+        103,
+        51,
+        22,
+        65,
+        93
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        76,
+        178,
+        40,
+        151,
+        99,
+        114,
+        89,
+        114,
+        60,
+        107,
+        147,
+        69,
+        112,
+        9,
+        122,
+        170,
+        124,
+        34,
+        64,
+        182
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpirjrx757.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую HuggingFace with model: Qwen/Qwen3-8B
+
+3) Ошибка Add a "api_key"
+
+2) Пробую OpenRouter with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую HuggingSpace with model: qwen/qwen3-8b
+
+2) Пробую HuggingFaceAPI with model: Qwen/Qwen3-8B
+
+3) Ошибка Failed to perform, curl: (77) error setting certificate verify locations:  CAfile: C:\Users\Иван Литвак\AppData\Local\Programs\Python\Python311\Lib\site-packages\certifi\cacert.pem CApath: none. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен исправленный код (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Этап: Первый рефакторинг ответ_от_рефакторинга
+
+Промпт для рефакторинга (полный):
+
+    You are an expert Python programmer. Refactor the following code:
+
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency and correctness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2], print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Ensure circular swap is triggered correctly when the current pass has no adjacent swaps**.
+    • Fully executable, immediately correct, passes verification for n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую HuggingSpace with model: qwen/qwen3-8b
+
+2) Пробую OpenRouter with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую HuggingFaceAPI with model: Qwen/Qwen3-8B
+
+3) Ошибка Failed to perform, curl: (77) error setting certificate verify locations:  CAfile: C:\Users\Иван Литвак\AppData\Local\Programs\Python\Python311\Lib\site-packages\certifi\cacert.pem CApath: none. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.
+
+2) Пробую OpenRouterFree with model: qwen-3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен рефакторированный код (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Этап: Тестирование после рефакторинга (длина: 93)
+
+Результат test_code после refactor: success=False, num_failing=25
+
+Тесты провалены после рефакторинга. Этап исправления: исправление_после_рефакторинга
+
+Промпт для исправления (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        13,
+        8,
+        12,
+        39
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        46,
+        9,
+        43,
+        37,
+        23
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        4,
+        35,
+        3,
+        35,
+        25,
+        56
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        66,
+        12,
+        65,
+        11,
+        3,
+        68,
+        65
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        9,
+        36,
+        80,
+        62,
+        6,
+        10,
+        29,
+        49
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        74,
+        46,
+        25,
+        58,
+        23,
+        77,
+        52,
+        17,
+        34
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        94,
+        9,
+        37,
+        58,
+        56,
+        24,
+        34,
+        79,
+        93,
+        30
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        28,
+        104,
+        4,
+        38,
+        20,
+        101,
+        67,
+        36,
+        59,
+        91,
+        8
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        29,
+        36,
+        106,
+        34,
+        48,
+        45,
+        33,
+        14,
+        20,
+        92,
+        28,
+        105
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        80,
+        18,
+        122,
+        63,
+        105,
+        104,
+        98,
+        110,
+        35,
+        85,
+        24,
+        62,
+        118
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        44,
+        11,
+        14,
+        119,
+        29,
+        51,
+        114,
+        55,
+        128,
+        102,
+        131,
+        16,
+        37,
+        137
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        61,
+        136,
+        148,
+        36,
+        62,
+        149,
+        130,
+        37,
+        10,
+        78,
+        42,
+        13,
+        20,
+        21,
+        16
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        66,
+        58,
+        36,
+        29,
+        5,
+        4,
+        99,
+        19,
+        89,
+        120,
+        145,
+        93,
+        100,
+        74,
+        119,
+        97
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        38,
+        56,
+        9,
+        28,
+        170,
+        137,
+        36,
+        58,
+        138,
+        28,
+        21,
+        40,
+        30,
+        57,
+        75,
+        39,
+        105
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        35,
+        66,
+        169,
+        1,
+        100,
+        70,
+        123,
+        107,
+        123,
+        121,
+        169,
+        36,
+        137,
+        58,
+        38,
+        121,
+        1,
+        148
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        156,
+        151,
+        7,
+        163,
+        13,
+        52,
+        107,
+        154,
+        99,
+        46,
+        86,
+        181,
+        5,
+        55,
+        72,
+        4,
+        53,
+        97,
+        76
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        166,
+        55,
+        13,
+        193,
+        145,
+        81,
+        121,
+        102,
+        49,
+        133,
+        168,
+        105,
+        73,
+        190,
+        50,
+        156,
+        179,
+        93,
+        63,
+        139
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpl6oed67l.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую HuggingFace with model: Qwen/Qwen3-8B
+
+3) Ошибка Add a "api_key"
+
+2) Пробую OpenRouter with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую PuterJS with model: openrouter:qwen/qwen3-8b:free
+
+3) Ошибка API key is required for Puter.js API
+
+2) Пробую HuggingSpace with model: qwen/qwen3-8b
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен исправленный код после refactor (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+=== ЦИКЛ РЕФАКТОРИНГА 1 ===
+
+Этап: Рефакторинг в цикле рефакторинг_в_цикле. Промпт (полный):
+
+    You are an expert Python programmer. Compare the current and previous versions and perform a full refactor:
+
+    Current code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Previous version:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency, robustness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2]; print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Circular swap must be performed if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Code must pass verification: applying swaps to copy(input) == sorted(input) for all n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую OpenRouter with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую PuterJS with model: openrouter:qwen/qwen3-8b:free
+
+3) Ошибка API key is required for Puter.js API
+
+2) Пробую HuggingSpace with model: qwen/qwen3-8b
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен рефакторированный код в цикле (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Этап: Тестирование в цикле (длина: 93)
+
+Результат test_code в цикле: success=False, num_failing=25
+
+Тесты провалены в цикле. Этап исправления: исправление_в_цикле
+
+Промпт для исправления в цикле (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        16,
+        36,
+        31
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        39,
+        42,
+        18,
+        23,
+        19
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        60,
+        52,
+        8,
+        14,
+        57,
+        50
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        61,
+        27,
+        28,
+        27,
+        3,
+        8,
+        25
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        28,
+        57,
+        70,
+        62,
+        59,
+        57,
+        1,
+        11
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        22,
+        89,
+        38,
+        24,
+        56,
+        53,
+        49,
+        61,
+        77
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        97,
+        53,
+        95,
+        8,
+        77,
+        72,
+        76,
+        39,
+        23,
+        35
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        2,
+        22,
+        25,
+        62,
+        1,
+        6,
+        61,
+        56,
+        88,
+        5,
+        38
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        85,
+        57,
+        35,
+        73,
+        13,
+        54,
+        74,
+        60,
+        55,
+        8,
+        38,
+        54
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        30,
+        123,
+        121,
+        61,
+        84,
+        3,
+        61,
+        37,
+        36,
+        8,
+        17,
+        109,
+        108
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        41,
+        137,
+        71,
+        17,
+        116,
+        76,
+        3,
+        99,
+        137,
+        49,
+        79,
+        28,
+        89,
+        89
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        107,
+        99,
+        28,
+        126,
+        7,
+        98,
+        58,
+        140,
+        77,
+        110,
+        43,
+        61,
+        34,
+        45,
+        122
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        132,
+        123,
+        17,
+        75,
+        150,
+        105,
+        71,
+        149,
+        27,
+        108,
+        21,
+        144,
+        93,
+        113,
+        1,
+        81
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        95,
+        132,
+        57,
+        156,
+        166,
+        10,
+        19,
+        101,
+        64,
+        48,
+        79,
+        99,
+        128,
+        120,
+        149,
+        155,
+        152
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        42,
+        32,
+        171,
+        3,
+        168,
+        51,
+        105,
+        170,
+        130,
+        24,
+        46,
+        86,
+        115,
+        158,
+        161,
+        132,
+        117,
+        64
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        109,
+        156,
+        151,
+        51,
+        190,
+        163,
+        177,
+        9,
+        85,
+        117,
+        182,
+        69,
+        70,
+        46,
+        36,
+        127,
+        27,
+        61,
+        164
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        155,
+        25,
+        26,
+        39,
+        10,
+        183,
+        159,
+        83,
+        25,
+        155,
+        108,
+        120,
+        61,
+        156,
+        134,
+        167,
+        117,
+        110,
+        111,
+        129
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpsttoy71z.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен исправленный код в цикле (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+=== ЦИКЛ РЕФАКТОРИНГА 2 ===
+
+Этап: Рефакторинг в цикле рефакторинг_в_цикле. Промпт (полный):
+
+    You are an expert Python programmer. Compare the current and previous versions and perform a full refactor:
+
+    Current code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Previous version:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency, robustness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2]; print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Circular swap must be performed if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Code must pass verification: applying swaps to copy(input) == sorted(input) for all n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую HuggingFace with model: Qwen/Qwen3-8B
+
+3) Ошибка Add a "api_key"
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен рефакторированный код в цикле (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Этап: Тестирование в цикле (длина: 93)
+
+Результат test_code в цикле: success=False, num_failing=25
+
+Тесты провалены в цикле. Этап исправления: исправление_в_цикле
+
+Промпт для исправления в цикле (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        38,
+        7,
+        31,
+        24
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        18,
+        26,
+        22,
+        25,
+        31
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        29,
+        45,
+        11,
+        41,
+        56,
+        52
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        63,
+        59,
+        26,
+        22,
+        2,
+        52,
+        65
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        22,
+        14,
+        4,
+        46,
+        9,
+        33,
+        11,
+        53
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        89,
+        48,
+        87,
+        3,
+        83,
+        66,
+        9,
+        21,
+        57
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        46,
+        22,
+        76,
+        25,
+        30,
+        81,
+        100,
+        94,
+        97,
+        19
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        19,
+        98,
+        71,
+        62,
+        54,
+        100,
+        32,
+        71,
+        72,
+        106,
+        12
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        98,
+        51,
+        74,
+        0,
+        81,
+        37,
+        39,
+        67,
+        4,
+        45,
+        54,
+        40
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        89,
+        3,
+        23,
+        16,
+        94,
+        81,
+        33,
+        84,
+        118,
+        110,
+        126,
+        114,
+        68
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        75,
+        74,
+        42,
+        128,
+        45,
+        4,
+        37,
+        22,
+        12,
+        89,
+        129,
+        23,
+        114,
+        67
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        54,
+        25,
+        103,
+        8,
+        135,
+        138,
+        42,
+        86,
+        91,
+        123,
+        51,
+        39,
+        5,
+        98,
+        99
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        17,
+        71,
+        73,
+        81,
+        120,
+        108,
+        82,
+        130,
+        41,
+        6,
+        68,
+        85,
+        89,
+        81,
+        38,
+        153
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        56,
+        135,
+        169,
+        88,
+        123,
+        167,
+        0,
+        165,
+        43,
+        86,
+        16,
+        132,
+        72,
+        131,
+        159,
+        147,
+        159
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        25,
+        161,
+        62,
+        178,
+        29,
+        8,
+        39,
+        86,
+        133,
+        59,
+        86,
+        119,
+        18,
+        154,
+        166,
+        10,
+        137,
+        63
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        9,
+        55,
+        88,
+        127,
+        21,
+        21,
+        12,
+        174,
+        149,
+        90,
+        49,
+        62,
+        96,
+        138,
+        189,
+        57,
+        110,
+        173,
+        136
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        151,
+        22,
+        66,
+        93,
+        134,
+        132,
+        74,
+        86,
+        166,
+        50,
+        68,
+        75,
+        167,
+        190,
+        150,
+        71,
+        35,
+        112,
+        92,
+        73
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpx7k56xqc.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую OpenRouter with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую PuterJS with model: openrouter:qwen/qwen3-8b:free
+
+3) Ошибка API key is required for Puter.js API
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен исправленный код в цикле (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+=== ЦИКЛ РЕФАКТОРИНГА 3 ===
+
+Этап: Рефакторинг в цикле рефакторинг_в_цикле. Промпт (полный):
+
+    You are an expert Python programmer. Compare the current and previous versions and perform a full refactor:
+
+    Current code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Previous version:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    ⚠️ Goals:
+    • Improve readability, structure, efficiency, robustness.
+    • Preserve `solve(vector)` interface: returns (swaps, sorted_array after applying swaps to copy(vector)).
+    • CLI: parse `sys.argv[1]` as JSON with fallback [3,1,2]; print only `json.dumps({"swaps":..., "sorted_array":...})`.
+    • Minimal example in __main__ must print JSON only.
+    • **Circular swap must be performed if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Code must pass verification: applying swaps to copy(input) == sorted(input) for all n=4-20.
+
+    ⚠️ Constraint reminder:
+    • STRICTLY use only swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • No slicing, built-in sort, or new arrays.
+    • Only code in response, no explanations or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен рефакторированный код в цикле (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Этап: Тестирование в цикле (длина: 93)
+
+Результат test_code в цикле: success=False, num_failing=25
+
+Тесты провалены в цикле. Этап исправления: исправление_в_цикле
+
+Промпт для исправления в цикле (полный):
+
+    You are a Python debugging assistant. The following code did not work correctly. 
+    Fix it to run correctly, follow the `solve(vector)` interface, and produce **only CLI JSON output**.
+
+    Code:
+    <span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+    Issue:
+    {
+  "failing_cases": [
+    {
+      "n": 3,
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        1,
+        2,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        5,
+        2,
+        4,
+        1,
+        3
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        0,
+        3,
+        31,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        6,
+        27,
+        49,
+        39,
+        40
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        51,
+        3,
+        22,
+        22,
+        39,
+        25
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        48,
+        18,
+        44,
+        20,
+        16,
+        61,
+        26
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 3,
+      "input": [
+        2,
+        3,
+        1
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 4,
+      "input": [
+        13,
+        13,
+        32,
+        28
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 5,
+      "input": [
+        3,
+        1,
+        43,
+        5,
+        24
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 6,
+      "input": [
+        25,
+        12,
+        35,
+        9,
+        46,
+        21
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 7,
+      "input": [
+        0,
+        16,
+        19,
+        0,
+        3,
+        42,
+        0
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 8,
+      "input": [
+        16,
+        1,
+        22,
+        31,
+        16,
+        64,
+        31,
+        18
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 9,
+      "input": [
+        14,
+        47,
+        56,
+        76,
+        62,
+        35,
+        54,
+        71,
+        62
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 10,
+      "input": [
+        91,
+        78,
+        83,
+        2,
+        26,
+        85,
+        55,
+        29,
+        86,
+        70
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 11,
+      "input": [
+        23,
+        95,
+        20,
+        22,
+        79,
+        105,
+        66,
+        64,
+        105,
+        100,
+        89
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 12,
+      "input": [
+        119,
+        24,
+        98,
+        5,
+        5,
+        96,
+        27,
+        28,
+        0,
+        95,
+        3,
+        39
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 13,
+      "input": [
+        103,
+        4,
+        82,
+        11,
+        19,
+        1,
+        0,
+        104,
+        89,
+        119,
+        95,
+        18,
+        33
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 14,
+      "input": [
+        91,
+        78,
+        30,
+        113,
+        14,
+        16,
+        112,
+        120,
+        90,
+        82,
+        66,
+        59,
+        59,
+        63
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 15,
+      "input": [
+        121,
+        128,
+        117,
+        6,
+        58,
+        27,
+        34,
+        49,
+        116,
+        133,
+        143,
+        141,
+        3,
+        137,
+        46
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 16,
+      "input": [
+        122,
+        68,
+        75,
+        84,
+        110,
+        97,
+        116,
+        138,
+        89,
+        81,
+        149,
+        60,
+        148,
+        148,
+        152,
+        100
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 17,
+      "input": [
+        134,
+        29,
+        169,
+        52,
+        59,
+        84,
+        1,
+        18,
+        84,
+        65,
+        40,
+        114,
+        48,
+        47,
+        117,
+        168,
+        146
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 18,
+      "input": [
+        75,
+        72,
+        59,
+        134,
+        145,
+        115,
+        73,
+        82,
+        67,
+        124,
+        169,
+        22,
+        66,
+        37,
+        166,
+        154,
+        147,
+        166
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 19,
+      "input": [
+        178,
+        18,
+        68,
+        182,
+        75,
+        29,
+        174,
+        6,
+        29,
+        72,
+        52,
+        90,
+        25,
+        134,
+        176,
+        17,
+        42,
+        53,
+        78
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    },
+    {
+      "n": 20,
+      "input": [
+        28,
+        173,
+        25,
+        46,
+        19,
+        187,
+        63,
+        116,
+        48,
+        20,
+        147,
+        94,
+        171,
+        151,
+        179,
+        136,
+        96,
+        138,
+        144,
+        27
+      ],
+      "error": "  File \"C:\\Users\\03D1~1\\AppData\\Local\\Temp\\tmpzimgedmj.py\", line 1\n    <span style=\"color: var(--color-red-500)\">'NoneType' object has no attribute 'choices'</span>\n    ^\nSyntaxError: invalid syntax\n",
+      "swaps": null,
+      "applied_swaps": [],
+      "result_array": null,
+      "expected": null,
+      "sorted_array": null
+    }
+  ]
+}
+
+    ⚠️ Requirements:
+    • `solve(vector)` returns (swaps, sorted_array) after IN-PLACE swaps on copy.
+    • CLI: `import json`; parse `sys.argv[1]` with fallback [3,1,2]; print only `json.dumps({"swaps": swaps, "sorted_array": sorted_array})`.
+    • Use try-except to catch missing arguments or invalid JSON.
+    • **Perform circular swap if and only if the current pass made no adjacent swaps**, not based on the total swaps list.
+    • Self-contained, executable, immediately correct for vectors of length 4-20.
+    • Only allowed swaps: swap(i, i+1) and swap(n-1,0); append (i,j) immediately after swap.
+    • Only code in response, no extra prints or Markdown.
+    
+
+1) Найдены провайдеры: [['OpenRouterFree', 'HuggingFace', 'PuterJS', 'HuggingSpace', 'HuggingFaceAPI', 'OpenRouter', 'Qwen_Qwen_3']]
+
+2) Пробую PuterJS with model: openrouter:qwen/qwen3-8b
+
+3) Ошибка API key is required for Puter.js API
+
+2) Пробую HuggingFaceAPI with model: Qwen/Qwen3-8B
+
+3) Ошибка Failed to perform, curl: (77) error setting certificate verify locations:  CAfile: C:\Users\Иван Литвак\AppData\Local\Programs\Python\Python311\Lib\site-packages\certifi\cacert.pem CApath: none. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.
+
+2) Пробую OpenRouter with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую OpenRouterFree with model: qwen/qwen3-8b
+
+3) Ошибка Add a "api_key"
+
+2) Пробую HuggingSpace with model: qwen/qwen3-8b
+
+2) Пробую HuggingFace with model: Qwen/Qwen3-8B
+
+3) Ошибка Add a "api_key"
+
+2) Пробую Qwen_Qwen_3 with model: qwen-3-8b
+
+Получен исправленный код в цикле (длина: 93), очищенный (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+Финальное тестирование: success=False, num_failing=25
+
+=== ФИНАЛЬНЫЙ КОД (длина: 93):
+<span style="color: var(--color-red-500)">'NoneType' object has no attribute 'choices'</span>
+
+=== КОНЕЦ ОБРАБОТКИ МОДЕЛИ: qwen-3-8b ===

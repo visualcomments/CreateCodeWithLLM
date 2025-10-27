@@ -1,0 +1,190 @@
+=== НАЧАЛО ОБРАБОТКИ МОДЕЛИ: default ===
+
+Этап: первичный_ответ. Полный промпт:
+
+    You are a Python programming assistant. Write a fully working Python module 
+    for the following task:
+
+    
+
+    Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed swaps.
+
+    Input: A vector `a` of length `n` (0-indexed).
+
+    Allowed operations:
+    - swap(i, i+1) for i = 0..n-2 (adjacent swap)
+    - swap(n-1, 0) — a circular swap between the last and the first element
+
+    Strict constraints:
+    - No other swaps, slicing, built-in sorting functions, or creating new arrays are allowed.
+    - All swaps must be appended to the `swaps` list immediately after performing them.
+    - Applying the swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    - Circular swaps can ONLY be performed as swap(n-1, 0), never as swap(i, n-1-i) or any other non-adjacent pair.
+
+    Critical clarification:
+    - Circular swaps may be used multiple times as needed during the sorting process.
+    - The sorting algorithm must continue applying swaps until the array is fully sorted.
+
+    Requirements:
+    1. Implement a function `solve(vector)` that returns a tuple `(swaps, sorted_array)`:
+        - `swaps` is a list of tuples representing all swaps performed.
+        - `sorted_array` is the final sorted array after applying all swaps to a copy of the input vector.
+    2. Include a CLI interface:
+        - When the script is executed directly, it should accept a vector as a **command-line argument**.
+        - The output should be a **JSON object** with keys `"swaps"` and `"sorted_array"`.
+    3. Include a minimal example in the `__main__` block for quick testing.
+    4. The code must be fully self-contained and executable without external dependencies.
+    5. JSON output must always be structured and parseable for automated testing.
+
+    Example expected usage:
+
+    ```bash
+    python solve_module.py "[3,1,2,5,4]"
+    
+
+    ⚠️ Requirements:
+    • Implement a function `solve(vector)` that sorts the vector using only adjacent swaps and circular swap `(n-1,0)`.
+    • Return a tuple `(swaps, sorted_array)`, where `swaps` is a list of tuples and `sorted_array` is the result AFTER applying all swaps to a copy of vector.
+    • Include `import json` and a CLI entry point: when executed, parse `sys.argv[1]` as JSON vector, fallback [3,1,2] if missing or invalid, and print only one JSON object `{"swaps": swaps, "sorted_array": sorted_array}`.
+    • The JSON output must be structured and parseable (double quotes for keys).
+    • Minimal example in `__main__` must use `solve([3,1,2])` and print JSON.
+    • Fully self-contained and immediately executable.
+    • Only code in the response, no explanations or Markdown.
+
+    ⚠️ Critical constraints:
+    • STRICTLY use only adjacent swaps swap(i, i+1) and circular swap swap(n-1,0).
+    • No slicing, built-in sort, or creating new arrays — work IN-PLACE on `arr = vector[:]`.
+    • **Track swaps made in each pass separately**: do not use the global swaps list to decide if a circular swap is needed — check only if the current pass made no swaps.
+    • Append all swaps to the swaps list immediately after performing them.
+    • Applying swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    
+
+Вызов llm_query с retries: {'max_retries': 1, 'backoff_factor': 1.0}
+
+1) Найдены провайдеры: [['StringableInference', 'OIVSCodeSer0501', 'OIVSCodeSer2', 'Copilot', 'DeepInfra', 'OperaAria', 'GLM', 'PollinationsAI', 'Qwen', 'Together', 'Chatai', 'WeWordle', 'Mintlify', 'TeachAnything', 'OpenaiChat', 'Cloudflare']]
+
+2) Пробую OperaAria with model:
+
+Получен ответ (длина: 1455), очищенный (длина: 1431):
+import json
+import sys
+def solve(vector):
+    """
+    Sorts a vector using only adjacent swaps and a circular swap.
+    Args:
+        vector: The input vector (list of numbers).
+    Returns:
+        A tuple (swaps, sorted_array).
+        - swaps: A list of tuples representing the swaps performed.
+        - sorted_array: The sorted array.
+    """
+    arr = vector[:]
+    n = len(arr)
+    swaps = []
+    sorted_flag = False
+    while not sorted_flag:
+        sorted_flag = True
+        swaps_in_pass = []
+        # Adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps_in_pass.append((i, i + 1))
+                sorted_flag = False
+        # Circular swap (if no adjacent swaps in this pass)
+        if not swaps_in_pass and n > 1 and arr[n - 1] < arr[0]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps_in_pass.append((n - 1, 0))
+            sorted_flag = False
+        swaps.extend(swaps_in_pass)
+    return swaps, arr
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        try:
+            input_vector = json.loads(sys.argv[1])
+        except (json.JSONDecodeError, TypeError):
+            input_vector = [3, 1, 2]
+    else:
+        input_vector = [3, 1, 2]
+    swaps, sorted_array = solve(input_vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output))
+
+Этап: Тестирование первичного кода (длина: 1431)
+
+Результат test_code: success=True, num_failing=0
+
+Финальное тестирование: success=True, num_failing=0
+
+=== ОТЧЁТ ПО ФИНАЛЬНОМУ ТЕСТИРОВАНИЮ ===
+
+n | Input Vector | Swaps Count | Time (s) | Applied Swaps Seq. | Output Array
+--------------------------------------------------------------------------------
+4 | [6, 27, 49, 39, 40] | 2 | 0.057 | [(2, 3), (3, 4)] | [6, 27, 39, 40, 49]
+5 | [51, 3, 22, 22, 39, 25] | 6 | 0.058 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (3, 4)] | [3, 22, 22, 25, 39, 51]
+6 | [48, 18, 44, 20, 16, 61, 26] | 11 | 0.061 | [(0, 1), (1, 2), (2, 3), (3, 4), (5, 6), (1, 2), (... | [16, 18, 20, 26, 44, 48, 61]
+7 | [2, 3, 1] | 2 | 0.055 | [(1, 2), (0, 1)] | [1, 2, 3]
+8 | [4, 2, 8, 37] | 1 | 0.051 | [(0, 1)] | [2, 4, 8, 37]
+9 | [24, 39, 44, 20, 32] | 5 | 0.059 | [(2, 3), (3, 4), (1, 2), (2, 3), (0, 1)] | [20, 24, 32, 39, 44]
+10 | [47, 45, 26, 60, 26, 32] | 9 | 0.059 | [(0, 1), (1, 2), (3, 4), (4, 5), (0, 1), (2, 3), (... | [26, 26, 32, 45, 47, 60]
+11 | [36, 20, 59, 13, 20, 54, 4] | 13 | 0.061 | [(0, 1), (2, 3), (3, 4), (4, 5), (5, 6), (1, 2), (... | [4, 13, 20, 20, 36, 54, 59]
+12 | [36, 20, 13, 0, 77, 45, 49, 14] | 13 | 0.061 | [(0, 1), (1, 2), (2, 3), (4, 5), (5, 6), (6, 7), (... | [0, 13, 14, 20, 36, 45, 49, 77]
+13 | [17, 70, 56, 10, 70, 35, 76, 17, 13] | 19 | 0.059 | [(1, 2), (2, 3), (4, 5), (6, 7), (7, 8), (1, 2), (... | [10, 13, 17, 17, 35, 56, 70, 70, 76]
+14 | [47, 58, 71, 64, 41, 83, 95, 10, 21, 74] | 21 | 0.058 | [(2, 3), (3, 4), (6, 7), (7, 8), (8, 9), (2, 3), (... | [10, 21, 41, 47, 58, 64, 71, 74, 83, 95]
+15 | [85, 55, 40, 10, 17, 10, 56, 61, 103, 27, 40] | 26 | 0.056 | [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (... | [10, 10, 17, 27, 40, 40, 55, 56, 61, 85, 103]
+16 | [34, 54, 100, 71, 22, 80, 19, 94, 120, 94, 97, 109] | 18 | 0.057 | [(2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (8, 9), (... | [19, 22, 34, 54, 71, 80, 94, 94, 97, 100, 109, 120]
+17 | [11, 98, 77, 15, 114, 85, 2, 124, 103, 39, 110, 54, 127] | 28 | 0.057 | [(1, 2), (2, 3), (4, 5), (5, 6), (7, 8), (8, 9), (... | [2, 11, 15, 39, 54, 77, 85, 98, 103, 110, 114, 124, 127]
+18 | [0, 59, 41, 8, 61, 15, 55, 86, 132, 80, 49, 40, 84, 70] | 30 | 0.055 | [(1, 2), (2, 3), (4, 5), (5, 6), (8, 9), (9, 10), ... | [0, 8, 15, 40, 41, 49, 55, 59, 61, 70, 80, 84, 86, 132]
+19 | [106, 32, 31, 29, 142, 135, 5, 136, 107, 107, 12, 124, 91, 76, 104] | 54 | 0.055 | [(0, 1), (1, 2), (2, 3), (4, 5), (5, 6), (6, 7), (... | [5, 12, 29, 31, 32, 76, 91, 104, 106, 107, 107, 124, 135, 136, 142]
+20 | [135, 66, 69, 145, 130, 87, 126, 131, 57, 4, 137, 11, 42, 122, 41, 22] | 81 | 0.058 | [(0, 1), (1, 2), (3, 4), (4, 5), (5, 6), (6, 7), (... | [4, 11, 22, 41, 42, 57, 66, 69, 87, 122, 126, 130, 131, 135, 137, 145]
+
+Общее время тестов: 1.43 с
+
+Максимальное потребление памяти (примерно): 4272 КБ
+
+=== ФИНАЛЬНЫЙ КОД (длина: 1431):
+import json
+import sys
+def solve(vector):
+    """
+    Sorts a vector using only adjacent swaps and a circular swap.
+    Args:
+        vector: The input vector (list of numbers).
+    Returns:
+        A tuple (swaps, sorted_array).
+        - swaps: A list of tuples representing the swaps performed.
+        - sorted_array: The sorted array.
+    """
+    arr = vector[:]
+    n = len(arr)
+    swaps = []
+    sorted_flag = False
+    while not sorted_flag:
+        sorted_flag = True
+        swaps_in_pass = []
+        # Adjacent swaps
+        for i in range(n - 1):
+            if arr[i] > arr[i + 1]:
+                arr[i], arr[i + 1] = arr[i + 1], arr[i]
+                swaps_in_pass.append((i, i + 1))
+                sorted_flag = False
+        # Circular swap (if no adjacent swaps in this pass)
+        if not swaps_in_pass and n > 1 and arr[n - 1] < arr[0]:
+            arr[0], arr[n - 1] = arr[n - 1], arr[0]
+            swaps_in_pass.append((n - 1, 0))
+            sorted_flag = False
+        swaps.extend(swaps_in_pass)
+    return swaps, arr
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        try:
+            input_vector = json.loads(sys.argv[1])
+        except (json.JSONDecodeError, TypeError):
+            input_vector = [3, 1, 2]
+    else:
+        input_vector = [3, 1, 2]
+    swaps, sorted_array = solve(input_vector)
+    output = {"swaps": swaps, "sorted_array": sorted_array}
+    print(json.dumps(output))
+
+=== КОНЕЦ ОБРАБОТКИ МОДЕЛИ: default ===
