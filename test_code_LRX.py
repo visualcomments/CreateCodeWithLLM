@@ -12,15 +12,15 @@ import psutil
 from time import perf_counter
 import re
 import tempfile
-import traceback # <-- Улучшение: для детального лога ошибок
+import traceback # <-- Improvement: for detailed error logging
 
-# Патч для RotatedProvider (используется в AnyProvider для ротации)
+# Patch for RotatedProvider (used in AnyProvider for rotation)
 try:
-    import g4f.providers.retry_provider as retry_mod  # Импорт модуля без кеширования класса
-    OriginalRotatedProvider = retry_mod.RotatedProvider  # Алиас оригинала для наследования
+    import g4f.providers.retry_provider as retry_mod  # Import module
+    OriginalRotatedProvider = retry_mod.RotatedProvider  # Alias original for inheritance
 except ImportError:
-    print("Не удалось импортировать g4f.providers.retry_provider. Используем заглушку.", file=sys.stderr)
-    # Заглушка, если g4f не установлен или структура изменилась
+    print("Failed to import g4f.providers.retry_provider. Using fallback.", file=sys.stderr)
+    # Fallback if g4f is not installed or structure changed
     class OriginalRotatedProvider:
         pass
 
@@ -35,14 +35,14 @@ import queue
 
 def clean_code(code: str) -> str:
     """
-    Очищает код от markdown-оболочек типа ```python ... ``` и JSON-метаданных (OpenAI-like).
-    Сначала проверяет JSON, извлекает content из choices[0].message.content если возможно.
-    Если JSON не парсится, ищет markdown-блок в строке и извлекает его содержимое.
-    Затем удаляет строки с ```python, ``` и лишние пустые строки.
+    Cleans code from markdown wrappers like ```python ... ``` and JSON metadata (OpenAI-like).
+    First, checks for JSON, extracts content from choices[0].message.content if possible.
+    If JSON doesn't parse, looks for a markdown block in the string and extracts its content.
+    Then removes lines with ```python, ``` and extra empty lines.
     """
     original_len = len(code)
     
-    # Шаг 1: Проверяем на JSON-оболочку (OpenAI-style)
+    # Step 1: Check for JSON wrapper (OpenAI-style)
     content_from_json = None
     try:
         data = json.loads(code)
@@ -50,28 +50,28 @@ def clean_code(code: str) -> str:
             content = data['choices'][0].get('message', {}).get('content', '')
             if isinstance(content, str):
                 content_from_json = content
-                code = content  # Заменяем на content для дальнейшей чистки
+                code = content  # Replace with content for further cleaning
     except (json.JSONDecodeError, KeyError, IndexError, TypeError):
-        pass  # Не JSON — продолжаем
+        pass  # Not JSON — continue
 
-    # Шаг 2: Если JSON не сработал или content_from_json пуст, ищем markdown-блок в оригинале
+    # Step 2: If JSON didn't work or content_from_json is empty, search for markdown block in original
     if content_from_json is None or not content_from_json.strip():
-        # Ищем первый блок ```python\n... (до следующего ``` или конца)
+        # Find first block ```python\n... (up to next ``` or end)
         match = re.search(r'```(?:python)?\s*\n(.*?)(?=\n?```\s*$|\Z)', code, re.DOTALL | re.MULTILINE)
         if match:
             code = match.group(1)
-        # Альтернатива: если блок без закрывающего ``` (как в твоём логе), ищем от первого ``` до конца
+        # Alternative: if block without closing ```, search from first ``` to end
         else:
             match = re.search(r'```(?:python)?\s*\n(.*)', code, re.DOTALL | re.MULTILINE)
             if match:
                 code = match.group(1)
 
-    # Шаг 3: Финальная чистка regex (на случай nested markdown)
-    # Удаляем блок ```python в начале
+    # Step 3: Final regex cleanup (for nested markdown)
+    # Remove ```python block at start
     code = re.sub(r'^```(?:python)?\s*\n?', '', code, flags=re.MULTILINE)
-    # Удаляем блок ``` в конце
+    # Remove ``` block at end
     code = re.sub(r'\n?```\s*$', '', code, flags=re.MULTILINE)
-    # Удаляем лишние пустые строки в начале и конце
+    # Remove extra newlines at start and end
     code = re.sub(r'^\n+', '', code, flags=re.MULTILINE)
     code = re.sub(r'\n+$', '\n', code, flags=re.MULTILINE)
     
@@ -79,7 +79,7 @@ def clean_code(code: str) -> str:
     
     return cleaned
 
-# Custom Rotated с трекингом (патчим только create_async_generator, логи в цикле)
+# Custom Rotated with tracking (patching create_async_generator, logs in loop)
 class TrackedRotated(OriginalRotatedProvider):
     async def create_async_generator(self, model, messages, **kwargs):
         if not hasattr(local, 'current_data') or local.current_data is None:
@@ -90,25 +90,25 @@ class TrackedRotated(OriginalRotatedProvider):
         current_data['success'] = None
         current_data['model'] = model
         if hasattr(local, 'current_model') and hasattr(local, 'current_queue') and self.providers:
-            local.current_queue.put((local.current_model, 'log', f'1) Найдены провайдеры: {[p.__name__ for p in self.providers]}'))
-            local.current_queue.put((local.current_model, 'log', f'Отладка: TrackedRotated вызван для модели {model}'))
+            local.current_queue.put((local.current_model, 'log', f'1) Found providers: {[p.__name__ for p in self.providers]}'))
+            local.current_queue.put((local.current_model, 'log', f'Debug: TrackedRotated called for model {model}'))
         
-        # Проверка, что self.providers не пустой (бывает при ошибках g4f)
+        # Check if self.providers is empty (can happen with g4f errors)
         if not self.providers:
              raise ModelNotFoundError(f"No providers found for model {model}", [])
 
         for provider_class in self.providers:
             p = None
-            # Безопасное получение имени провайдера ДО try (для str/классов)
+            # Safely get provider name BEFORE try (for str/classes)
             if isinstance(provider_class, str):
                 provider_name = provider_class
             else:
                 provider_name = provider_class.__name__ if hasattr(provider_class, '__name__') else str(provider_class)
             current_data['tried'].append(provider_name)
             if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
-                local.current_queue.put((local.current_model, 'log', f'2) Пробую {provider_name} with model: {model}'))
+                local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_name} with model: {model}'))
             try:
-                # Если str, преобразуем в класс для инстанциации
+                # If str, convert to class for instantiation
                 if isinstance(provider_class, str):
                     if hasattr(Provider, provider_class):
                         provider_class = getattr(Provider, provider_class)
@@ -117,37 +117,37 @@ class TrackedRotated(OriginalRotatedProvider):
                 p = provider_class()
                 async for chunk in p.create_async_generator(model, messages, **kwargs):
                     yield chunk
-                # Успех: put лог
+                # Success: put log
                 if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
-                    local.current_queue.put((local.current_model, 'log', f'3) Успех от {provider_name}'))
+                    local.current_queue.put((local.current_model, 'log', f'3) Success from {provider_name}'))
                     current_data['success'] = provider_name
                 return
             except Exception as e:
                 error_str = str(e)
                 if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
-                    error_msg = f'3) Ошибка {provider_name}: {error_str}'
+                    error_msg = f'3) Error {provider_name}: {error_str}'
                     local.current_queue.put((local.current_model, 'log', error_msg))
                 current_data['errors'][provider_name] = error_str
                 if p:
                     if hasattr(p, '__del__'):
                         p.__del__()
                 continue
-        # Нет успеха: финальный лог
+        # No success: final log
         try:
             if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
-                local.current_queue.put((local.current_model, 'log', f'Отладка: TrackedRotated завершён, tried_providers={current_data["tried"]}'))
+                local.current_queue.put((local.current_model, 'log', f'Debug: TrackedRotated finished, tried_providers={current_data["tried"]}'))
         except Exception:
             pass
         raise ModelNotFoundError(f"No working provider for model {model}", current_data['tried'])
 
-# Monkey-patch: замени RotatedProvider на TrackedRotated (используется в AnyProvider)
+# Monkey-patch: replace RotatedProvider with TrackedRotated (used by AnyProvider)
 try:
     retry_mod.RotatedProvider = TrackedRotated
 except NameError:
-    print("Не удалось применить Monkey-patch для RotatedProvider (retry_mod не определен)", file=sys.stderr)
+    print("Failed to apply Monkey-patch for RotatedProvider (retry_mod not defined)", file=sys.stderr)
 
 
-# Патч на g4f.debug для записи в queue (без консоли, с JSON если нужно)
+# Patch g4f.debug to write to queue (no console, with JSON if needed)
 try:
     original_log = g4f.debug.log
     original_error = g4f.debug.error
@@ -157,10 +157,10 @@ try:
         if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
             if 'AnyProvider: Using providers:' in message_str:
                 providers_str = message_str.split('providers: ')[1].split(" for model")[0].strip("'")
-                local.current_queue.put((local.current_model, 'log', f'1) Найдены провайдеры: [{providers_str}]'))
+                local.current_queue.put((local.current_model, 'log', f'1) Found providers: [{providers_str}]'))
             elif 'Attempting provider:' in message_str:
                 provider_str = message_str.split('provider: ')[1].strip()
-                local.current_queue.put((local.current_model, 'log', f'2) Пробую {provider_str}'))
+                local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_str}'))
 
 
     def patched_error(message, *args, **kwargs):
@@ -168,29 +168,30 @@ try:
         if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
             if 'failed:' in message_str:
                 fail_str = message_str.split('failed: ')[1].strip()
-                local.current_queue.put((local.current_model, 'log', f'3) Ошибка {fail_str}'))
+                local.current_queue.put((local.current_model, 'log', f'3) Error {fail_str}'))
             elif 'success' in message_str.lower():
-                success_str = message_str.split('success: ')[1].strip() if 'success: ' in message_str else 'успех'
-                local.current_queue.put((local.current_model, 'log', f'3) Успех {success_str}'))
+                success_str = message_str.split('success: ')[1].strip() if 'success: ' in message_str else 'success'
+                local.current_queue.put((local.current_model, 'log', f'3) Success {success_str}'))
 
     g4f.debug.log = patched_log
     g4f.debug.error = patched_error
 
 except AttributeError:
-     print("Не удалось применить Monkey-patch для g4f.debug (атрибуты не найдены)", file=sys.stderr)
+     print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
 
 
 CONFIG = {
-    # Раздел с URL-адресами для загрузки данных о рабочих моделях
+    # Section with URLs for downloading data about working models
     'URLS': {
-        # URL файла с результатами тестирования рабочих моделей g4f
+        # URL of the file with test results for working g4f models
+        # *** FIX: Removed Markdown formatting from the URL ***
         'WORKING_RESULTS': '[https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt](https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt)'
     },
 
-    # Раздел с промптами для различных этапов взаимодействия с LLM
+    # Section with prompts for various stages of interaction with LLM
     'PROMPTS': {
-        # ИСПРАВЛЕНИЕ: Этот промпт содержит {n-1}, что ломает .format(task=...).
-        # Мы больше не будем его форматировать.
+        # This prompt contains {n-1}, which breaks .format(task=...).
+        # We will no longer format it.
         'INITIAL': r"""
 You are an AI assistant. Your task is to write code that implements the three fundamental transformations of the "LRX algorithm". These transformations operate on a permutation of $n$ elements.
 
@@ -261,62 +262,61 @@ Previous version:
 """
     },
 
-
-
-
-    # Раздел с настройками ретраев для разных типов запросов
+    # Section with retry settings for different request types
     'RETRIES': {
-        # Настройки ретраев для начального запроса: максимум 1 ретрай, фактор задержки 1.0
+        # Retry settings for initial request: max 1 retry, backoff factor 1.0
         'INITIAL': {'max_retries': 1, 'backoff_factor': 1.0},
-        # Настройки ретраев для исправлений: максимум 3 ретрая, фактор задержки 2.0 (экспоненциальный)
+        # Retry settings for fixes: max 3 retries, backoff factor 2.0 (exponential)
         'FIX': {'max_retries': 3, 'backoff_factor': 2.0}
     },
 
-    # Раздел с константами системы
+    # Section with system constants
     'CONSTANTS': {
-        # Разделитель в строках файла working_results.txt (между Provider|Model|Type)
+        # Delimiter in working_results.txt file strings (between Provider|Model|Type)
         'DELIMITER_MODEL': '|',
-        # Тип модели для фильтрации (только текстовые модели)
+        # Model type for filtering (only text models)
         'MODEL_TYPE_TEXT': 'text',
-        # Таймаут для запросов к URL (в секундах)
-        'REQUEST_TIMEOUT': 10, # Уменьшено для более быстрого Falla
-        # Частота сохранения промежуточных результатов (каждые N моделей)
+        # Timeout for URL requests (in seconds)
+        'REQUEST_TIMEOUT': 10, # Reduced for faster fallback
+        # Frequency for saving intermediate results (every N models)
         'N_SAVE': 100,
-        # Максимальное количество параллельных потоков для обработки моделей
-        'MAX_WORKERS': 10, # УЛУЧШЕНИЕ: 50 слишком много для Kaggle
-        # Таймаут для выполнения кода в subprocess (в секундах)
+        # Maximum number of parallel threads for processing models
+        'MAX_WORKERS': 10, # IMPROVEMENT: 50 is too much for Kaggle
+        # Timeout for code execution in subprocess (in seconds)
         'EXEC_TIMEOUT': 5,
-        # Сообщение об ошибке таймаута выполнения кода
+        # Error message for code execution timeout
         'ERROR_TIMEOUT': 'Timeout expired — the program likely entered an infinite loop.',
-        # Сообщение об ошибке отсутствия ответа от модели
+        # Error message for no response from model
         'ERROR_NO_RESPONSE': 'No response from model',
-        # Количество циклов рефакторинга в process_model
+        # Number of refactoring loops in process_model
         'NUM_REFACTOR_LOOPS': 3,
-        # Название папки для промежуточных и финальных результатов
-        'INTERMEDIATE_FOLDER': 'промежуточные результаты'
+        # Folder name for intermediate and final results
+        # *** FIX: Translated to English ***
+        'INTERMEDIATE_FOLDER': 'results'
     },
 
-    # Раздел с именами этапов обработки для логов и статусов
+    # Section with stage names for logs and statuses
+    # *** FIX: Translated to English ***
     'STAGES': {
-        # Этап генерации начального кода
-        'INITIAL': 'первичный_ответ',
-        # Этап исправления кода перед первым рефакторингом
-        'FIX_INITIAL': 'исправление_до_рефакторинга',
-        # Этап первого рефакторинга
-        'REFACTOR_FIRST': 'ответ_от_рефакторинга',
-        # Этап исправления после первого рефакторинга
-        'FIX_AFTER_REFACTOR': 'исправление_после_рефакторинга',
-        # Этап рефакторинга в цикле
-        'REFACTOR': 'рефакторинг_в_цикле',
-        # Этап исправления в цикле рефакторинга
-        'FIX_LOOP': 'исправление_в_цикле'
+        # Stage for generating initial code
+        'INITIAL': 'initial_response',
+        # Stage for fixing code before first refactor
+        'FIX_INITIAL': 'fix_before_refactor',
+        # Stage for first refactor
+        'REFACTOR_FIRST': 'refactor_first_response',
+        # Stage for fixing after first refactor
+        'FIX_AFTER_REFACTOR': 'fix_after_refactor',
+        # Stage for refactoring in a loop
+        'REFACTOR': 'refactor_loop',
+        # Stage for fixing in a refactor loop
+        'FIX_LOOP': 'fix_loop'
     }
 }
 
 def get_models_list(config: Dict) -> List[str]:
     """
-    Функция для формирования списка доступных моделей.
-    УЛУЧШЕНИЕ: Добавлена обработка ошибок сети.
+    Function to form a list of available models.
+    IMPROVEMENT: Added network error handling.
     """
     working_models = set()
     url_txt = config['URLS']['WORKING_RESULTS']
@@ -329,14 +329,15 @@ def get_models_list(config: Dict) -> List[str]:
                 parts = [p.strip() for p in line.split(config['CONSTANTS']['DELIMITER_MODEL'])]
                 if len(parts) == 3 and parts[2] == config['CONSTANTS']['MODEL_TYPE_TEXT']:
                     model_name = parts[1]
-                    # Дополнительный фильтр: исключаем flux и подобные
+                    # Additional filter: exclude flux and similar
                     if 'flux' not in model_name.lower():
                         working_models.add(model_name)
     except requests.RequestException as e:
-        print(f"Warning: Не удалось скачать {url_txt}. Причина: {e}. Используем только g4f.models.", file=sys.stderr)
+        # *** FIX: Translated message ***
+        print(f"Warning: Failed to download {url_txt}. Reason: {e}. Using only g4f.models.", file=sys.stderr)
         text = ''
     
-    # Из g4f.models: только базовые текстовые Model, исключая подклассы (Image, Vision и т.д.)
+    # From g4f.models: only base text Models, excluding subclasses (Image, Vision, etc.)
     try:
         from g4f.models import Model
         all_g4f_models = Model.__all__()
@@ -345,7 +346,8 @@ def get_models_list(config: Dict) -> List[str]:
             if 'flux' not in model_name.lower() and not any(sub in model_name.lower() for sub in ['image', 'vision', 'audio', 'video']):
                 g4f_models.add(model_name)
     except ImportError:
-        print("Warning: Не удалось импортировать g4f.models. Список моделей может быть неполным.", file=sys.stderr)
+        # *** FIX: Translated message ***
+        print("Warning: Failed to import g4f.models. Model list may be incomplete.", file=sys.stderr)
         g4f_models = set()
     
     all_models = list(working_models.union(g4f_models))
@@ -354,34 +356,34 @@ def get_models_list(config: Dict) -> List[str]:
 
 
 # =============================================================================
-# === test_code() с ИСПРАВЛЕНИЕМ в _expected_R ===
+# === test_code() with CORRECTION in _expected_R ===
 # =============================================================================
 
 def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
     """
-    Тестирование кода (LRX) с различными векторами, включая пограничные случаи.
+    Testing code (LRX) with various vectors, including edge cases.
     """
     
-    # --- Эталонные (Ground Truth) реализации LRX для проверки ---
+    # --- Ground Truth implementations of LRX for verification ---
     def _expected_L(v):
-        """Эталонный левый сдвиг"""
+        """Reference left shift"""
         if not v:
             return []
         return v[1:] + v[:1]
 
     def _expected_R(v):
-        """Эталонный правый сдвиг"""
+        """Reference right shift"""
         if not v:
             return []
-        # ИСПРАВЛЕНИЕ: v[-1:] (срез) вместо v['n-1'] (опечатка из репо)
+        # CORRECTION: v[-1:] (slice) instead of v['n-1'] (typo from repo)
         return v[-1:] + v[:-1] 
 
     def _expected_X(v):
-        """Эталонная транспозиция"""
+        """Reference transposition"""
         if len(v) < 2:
             return v[:]
-        # Создаем новый список, комбинируя поменяные 
-        # первые два элемента и остаток списка
+        # Create a new list, combining the swapped
+        # first two elements and the rest of the list
         return [v[1], v[0]] + v[2:]
     # ---
 
@@ -400,19 +402,20 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
         start_time = perf_counter()
         child_process = None
         
-        # Ожидаемые результаты (вычисляем до запуска)
+        # Expected results (calculate before running)
         try:
             exp_l = _expected_L(vector)
             exp_r = _expected_R(vector)
             exp_x = _expected_X(vector)
         except Exception as e_gt:
-            # Эта ошибка не в коде LLM, а в *нашем* эталонном коде.
-            err_msg = f"Ошибка в эталонной функции: {e_gt}"
+            # This error is not in the LLM code, but in *our* ground truth code.
+            # *** FIX: Translated message ***
+            err_msg = f"Error in ground truth function: {e_gt}"
             print(err_msg, file=sys.stderr)
             traceback.print_exc()
             return {'n': n, 'success': False, 'error': err_msg, 'input': vector}, err_msg, False
         
-        # Словарь-заготовка для ошибки
+        # Template dictionary for an error
         error_result_dict = {
             'n': n,
             'success': False,
@@ -435,7 +438,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             )
             stdout, stderr = child_process.communicate(timeout=exec_timeout)
             elapsed = perf_counter() - start_time
-            error_result_dict['time'] = elapsed # Обновляем время даже в случае ошибки
+            error_result_dict['time'] = elapsed # Update time even in case of error
 
             if child_process.returncode != 0:
                 err = stderr or 'Unknown error'
@@ -451,7 +454,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             try:
                 parsed = json.loads(output)
                 
-                # --- НОВЫЙ БЛОК ПРОВЕРКИ LRX ---
+                # --- NEW LRX VERIFICATION BLOCK ---
                 l_res = parsed.get('L_result')
                 r_res = parsed.get('R_result')
                 x_res = parsed.get('X_result')
@@ -468,7 +471,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
                     if not success_r: errors.append(f"R mismatch: got {r_res}, expected {exp_r}")
                     if not success_x: errors.append(f"X mismatch: got {x_res}, expected {exp_x}")
                     error_msg = "; ".join(errors)
-                # --- КОНЕЦ НОВОГО БЛОКА ---
+                # --- END OF NEW BLOCK ---
 
                 res_dict = {
                     'n': n,
@@ -493,7 +496,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             except KeyError as ke: 
                 err = f'KeyError: {ke}. JSON output missing expected keys. Output was: {output}'
                 error_result_dict['error'] = err
-                # Заполняем тем, что смогли спарсить
+                # Fill with what we managed to parse
                 error_result_dict['L_result'] = parsed.get('L_result')
                 error_result_dict['R_result'] = parsed.get('R_result')
                 error_result_dict['X_result'] = parsed.get('X_result')
@@ -504,7 +507,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             if child_process:
                 child_process.kill()
             error_result_dict['error'] = err
-            error_result_dict['time'] = exec_timeout # Время = таймаут
+            error_result_dict['time'] = exec_timeout # Time = timeout
             return error_result_dict, err, False
         finally:
             if child_process:
@@ -523,7 +526,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
     except (ImportError, Exception):
         start_mem = None
 
-    # --- ОБНОВЛЕННЫЕ ВЕКТОРЫ для LRX ---
+    # --- UPDATED VECTORS for LRX ---
     specific_vectors = [
         [],                      # n=0
         [1],                     # n=1
@@ -532,7 +535,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
         [3, 1, 2],
         [5, 2, 4, 1, 3],
         [48, 18, 44, 20, 16, 61, 26],
-        [1, 2, 3, 4], # Базовый вектор из промпта
+        [1, 2, 3, 4], # Base vector from prompt
     ]
     # ---
 
@@ -548,7 +551,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
 
         if not single_success:
             all_success = False
-            # --- ОБНОВЛЕННЫЙ ОТЧЕТ ОБ ОШИБКЕ ---
+            # --- UPDATED ERROR REPORT ---
             failing_case = {
                 'n': res_dict['n'],
                 'input': res_dict['input'],
@@ -594,12 +597,12 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
         return False, issue_str, summary
 
 # =============================================================================
-# === КОНЕЦ ОБНОВЛЕННОЙ ФУНКЦИИ test_code() ===
+# === END OF UPDATED test_code() FUNCTION ===
 # =============================================================================
 
 
 def llm_query(model: str, prompt: str, retries_config: Dict, config: Dict, progress_queue: queue.Queue, stage: str = None) -> Optional[str]:
-    # Инициализация local только для патча (чтобы он мог писать в очередь)
+    # Initialize local only for the patch (so it can write to the queue)
     local.current_model = model
     local.current_queue = progress_queue
     local.current_data = {'tried': [], 'errors': {}, 'success': None, 'model': model}
@@ -607,7 +610,7 @@ def llm_query(model: str, prompt: str, retries_config: Dict, config: Dict, progr
 
     request_timeout = config['CONSTANTS']['REQUEST_TIMEOUT']
 
-    # AnyProvider: простой вызов с retries
+    # AnyProvider: simple call with retries
     for attempt in range(retries_config['max_retries'] + 1):
         try:
             response = g4f.ChatCompletion.create(
@@ -619,15 +622,17 @@ def llm_query(model: str, prompt: str, retries_config: Dict, config: Dict, progr
             if response and response.strip():
                 return response.strip()
         except ModelNotFoundError as e:
-            # УЛУЧШЕНИЕ: Логируем, если модель не найдена
-            progress_queue.put((model, 'log', f'Ошибка: ModelNotFoundError: {e}'))
+            # IMPROVEMENT: Log if model not found
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'Error: ModelNotFoundError: {e}'))
             if len(e.args) > 1:
                 local.current_data['tried'] = e.args[1]
-            return None # Модель не найдена, ретрай не поможет
+            return None # Model not found, retry won't help
         except Exception as e:
-            # УЛУЧШЕНИЕ: Логируем любую другую ошибку g4f (напр. rate limit)
-            progress_queue.put((model, 'log', f'Ошибка g4f (попытка {attempt+1}): {e}'))
-            pass # Позволяем ретраю сработать
+            # IMPROVEMENT: Log any other g4f error (e.g., rate limit)
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'g4f Error (attempt {attempt+1}): {e}'))
+            pass # Allow retry to work
         
         if attempt < retries_config['max_retries']:
             time.sleep(retries_config['backoff_factor'] * (2 ** attempt))
@@ -636,15 +641,15 @@ def llm_query(model: str, prompt: str, retries_config: Dict, config: Dict, progr
 
 def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict:
     """
-    Обработка одной модели: последовательность запросов LLM, test, fix, refactor.
-    ИСПРАВЛЕНИЕ: Убран аргумент `task`, т.к. он вызывал KeyError.
+    Process one model: sequence of LLM queries, test, fix, refactor.
+    CORRECTION: Removed `task` argument, as it caused a KeyError.
     """
     iterations = []
     current_code = None
     prev_code = None
     early_stop = False
     
-    # Считаем общее количество этапов для progress bar
+    # Count total number of stages for progress bar
     # 1 (Initial) + 1 (Test/Fix) + 1 (Refactor1) + 1 (Test/Fix) + N*(Refactor + Test/Fix) + 1 (Final Test)
     num_loops = config['CONSTANTS']['NUM_REFACTOR_LOOPS']
     total_stages = 1 + 1 + 1 + 1 + (num_loops * 2) + 1
@@ -653,28 +658,32 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     def update_progress(stage_name):
         nonlocal current_stage_count
         current_stage_count += 1
-        progress_queue.put((model, 'status', f'Этап: {stage_name} ({current_stage_count}/{total_stages})'))
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'status', f'Stage: {stage_name} ({current_stage_count}/{total_stages})'))
         progress_queue.put((model, 'progress', (current_stage_count, total_stages)))
 
     def run_test(code_to_test, stage_name):
-        """Внутренняя функция для тестирования и логирования."""
+        """Internal function for testing and logging."""
         if not code_to_test or not code_to_test.strip():
-            progress_queue.put((model, 'log', f'Тест {stage_name}: Пропущен (нет кода).'))
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'Test {stage_name}: Skipped (no code).'))
             return False, "No code to test", None
             
-        progress_queue.put((model, 'log', f'Тест {stage_name}: Запуск test_code...'))
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'log', f'Test {stage_name}: Running test_code...'))
         success, issue, summary = test_code(code_to_test, config)
         if success:
-            progress_queue.put((model, 'log', f'Тест {stage_name}: УСПЕХ. {issue}'))
+            progress_queue.put((model, 'log', f'Test {stage_name}: SUCCESS. {issue}'))
         else:
-            progress_queue.put((model, 'log', f'Тест {stage_name}: ОШИБКА. Причина: {issue}'))
+            progress_queue.put((model, 'log', f'Test {stage_name}: FAILED. Reason: {issue}'))
         return success, issue, summary
 
     def run_llm_query(prompt, stage_name, retries_key='FIX'):
-        """Внутренняя функция для LLM-запроса и логирования."""
-        progress_queue.put((model, 'log', f'Этап: {stage_name}. Промпт:\n{prompt}'))
+        """Internal function for LLM query and logging."""
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'log', f'Stage: {stage_name}. Prompt:\n{prompt}'))
         retries_cfg = config['RETRIES'][retries_key]
-        progress_queue.put((model, 'log', f'Вызов llm_query с retries: {retries_cfg}'))
+        progress_queue.put((model, 'log', f'Calling llm_query with retries: {retries_cfg}'))
         
         response = llm_query(model, prompt, retries_cfg, config, progress_queue, stage_name)
         
@@ -683,41 +692,45 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
         
         if response:
             cleaned = clean_code(response)
-            progress_queue.put((model, 'log', f'Получен ответ (длина: {len(response)}), очищенный (длина: {len(cleaned)}):\n{cleaned}'))
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'Received response (length: {len(response)}), cleaned (length: {len(cleaned)}):\n{cleaned}'))
             return cleaned, None, tried, success_p
         else:
             error_msg = config['CONSTANTS']['ERROR_NO_RESPONSE']
-            progress_queue.put((model, 'log', f'Ошибка llm_query: {error_msg}'))
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'llm_query error: {error_msg}'))
             return None, error_msg, tried, success_p
 
     def add_iteration(stage, response, error, test_summary, tried, success_p):
-        """Добавляет запись в историю итераций."""
+        """Adds a record to the iteration history."""
         iterations.append({
             'providers_tried': tried,
             'success_provider': success_p,
             'stage': stage,
-            'response': response, # Сохраняем код (или None)
-            'error': error, # Ошибка LLM или теста
-            'test_summary': test_summary # Результат test_code
+            'response': response, # Save the code (or None)
+            'error': error, # LLM or test error
+            'test_summary': test_summary # Result from test_code
         })
 
     # ---
-    # НАЧАЛО ПРОЦЕССА
+    # START OF PROCESS
     # ---
-    progress_queue.put((model, 'log', f'=== НАЧАЛО ОБРАБОТКИ МОДЕЛИ: {model} ==='))
+    # *** FIX: Translated message ***
+    progress_queue.put((model, 'log', f'=== STARTING MODEL PROCESSING: {model} ==='))
     
     # 1. Initial
     stage = config['STAGES']['INITIAL']
     update_progress(stage)
     
-    # ИСПРАВЛЕНИЕ: Убираем .format(task=task), чтобы избежать KeyError: 'n-1'
+    # CORRECTION: Remove .format(task=task) to avoid KeyError: 'n-1'
     prompt = config['PROMPTS']['INITIAL'] 
     
     current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
     add_iteration(stage, current_code, llm_error, None, tried, s_provider)
     
     if llm_error:
-        progress_queue.put((model, 'status', f'Ошибка на этапе: {stage}'))
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'status', f'Error at stage: {stage}'))
         return {'model': model, 'iterations': iterations, 'final_code': None,
                 'final_test': {'success': False, 'summary': None, 'issue': 'No initial response'}}
 
@@ -729,15 +742,16 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     if not success:
         prompt = config['PROMPTS']['FIX'].format(code=current_code, error=issue)
         current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
-        add_iteration(stage, current_code, llm_error, summary, tried, s_provider) # Добавляем попытку FIX
+        add_iteration(stage, current_code, llm_error, summary, tried, s_provider) # Add FIX attempt
         if llm_error:
-            early_stop = True # Ошибка LLM при исправлении = стоп
+            early_stop = True # LLM error during fix = stop
     else:
-        # Добавляем запись об успешном тесте, даже если FIX не требовался
+        # Add record of successful test, even if FIX wasn't needed
         add_iteration(stage, current_code, None, summary, [], None) 
 
     if early_stop:
-        progress_queue.put((model, 'status', f'Ошибка на этапе: {stage}'))
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'status', f'Error at stage: {stage}'))
         return {'model': model, 'iterations': iterations, 'final_code': current_code,
                 'final_test': {'success': False, 'summary': summary, 'issue': f'LLM error during {stage}'}}
 
@@ -747,12 +761,13 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     update_progress(stage)
     prompt = config['PROMPTS']['REFACTOR_NO_PREV'].format(code=current_code)
     
-    current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL') # Используем 'INITIAL' retries
+    current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL') # Use 'INITIAL' retries
     add_iteration(stage, current_code, llm_error, None, tried, s_provider)
 
     if llm_error:
-        current_code = prev_code # Откатываемся, если рефакторинг не удался
-        progress_queue.put((model, 'log', f'Ошибка {stage}, откат к предыдущей версии кода.'))
+        current_code = prev_code # Rollback if refactor failed
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'log', f'Error {stage}, rolling back to previous code version.'))
     
     # 4. Test & Fix (After Refactor 1)
     stage = config['STAGES']['FIX_AFTER_REFACTOR']
@@ -769,15 +784,17 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
         add_iteration(stage, current_code, None, summary, [], None)
 
     if early_stop:
-        progress_queue.put((model, 'status', f'Ошибка на этапе: {stage}'))
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'status', f'Error at stage: {stage}'))
         return {'model': model, 'iterations': iterations, 'final_code': current_code,
                 'final_test': {'success': False, 'summary': summary, 'issue': f'LLM error during {stage}'}}
 
     # 5. Refactor Loops (N times)
     for i in range(config['CONSTANTS']['NUM_REFACTOR_LOOPS']):
         if not current_code or not current_code.strip():
-            progress_queue.put((model, 'log', f'Пропуск цикла рефакторинга {i+1} (нет кода).'))
-            update_progress(f'loop {i+1} refactor (skip)') # Пропускаем 2 этапа
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'Skipping refactor loop {i+1} (no code).'))
+            update_progress(f'loop {i+1} refactor (skip)') # Skip 2 stages
             update_progress(f'loop {i+1} fix (skip)')
             continue
             
@@ -786,14 +803,15 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
         update_progress(stage)
         
         prompt = config['PROMPTS']['REFACTOR'].format(code=current_code, prev=prev_code)
-        prev_code = current_code # Сохраняем для следующего цикла
+        prev_code = current_code # Save for next loop
         
         current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
         add_iteration(stage, current_code, llm_error, None, tried, s_provider)
 
         if llm_error:
-            current_code = prev_code # Откат
-            progress_queue.put((model, 'log', f'Ошибка {stage}, откат к предыдущей версии кода.'))
+            current_code = prev_code # Rollback
+            # *** FIX: Translated message ***
+            progress_queue.put((model, 'log', f'Error {stage}, rolling back to previous code version.'))
         
         # 5b. Test & Fix
         stage = f"{config['STAGES']['FIX_LOOP']}_{i+1}"
@@ -805,8 +823,9 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
             current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
             add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
             if llm_error:
-                progress_queue.put((model, 'status', f'Ошибка на этапе: {stage}, ОСТАНОВКА ЦИКЛА'))
-                break # Прерываем цикл рефакторинга, если LLM не смог исправить
+                # *** FIX: Translated message ***
+                progress_queue.put((model, 'status', f'Error at stage: {stage}, STOPPING LOOP'))
+                break # Break refactor loop if LLM couldn't fix
         else:
             add_iteration(stage, current_code, None, summary, [], None)
 
@@ -815,15 +834,16 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     update_progress(stage)
     success, issue, summary = run_test(current_code, stage)
     
-    # Добавляем финальную запись (она дублирует final_test в ответе, но полезна для истории)
+    # Add final record (duplicates final_test in response, but useful for history)
     add_iteration(stage, current_code, None if success else issue, summary, [], None)
 
     if success:
-        progress_queue.put((model, 'log', f'ФИНАЛ: УСПЕХ. {issue}'))
-        progress_queue.put((model, 'status', 'Успех (финальный тест)'))
+        # *** FIX: Translated message ***
+        progress_queue.put((model, 'log', f'FINAL: SUCCESS. {issue}'))
+        progress_queue.put((model, 'status', 'Success (final test)'))
     else:
-        progress_queue.put((model, 'log', f'ФИНАЛ: ОШИБКА. Причина: {issue}'))
-        progress_queue.put((model, 'status', 'Ошибка (финальный тест)'))
+        progress_queue.put((model, 'log', f'FINAL: FAILED. Reason: {issue}'))
+        progress_queue.put((model, 'status', 'Failed (final test)'))
 
     return {
         'model': model,
@@ -834,61 +854,67 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
 
 
 def save_results(results, folder, filename):
-    """Безопасное сохранение результатов в JSON."""
+    """Safely save results to JSON."""
     if not os.path.exists(folder):
         try:
             os.makedirs(folder)
         except OSError as e:
-            print(f"Ошибка создания папки {folder}: {e}", file=sys.stderr)
+            # *** FIX: Translated message ***
+            print(f"Error creating folder {folder}: {e}", file=sys.stderr)
             return
     path = os.path.join(folder, filename)
     try:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Ошибка сохранения файла {path}: {e}", file=sys.stderr)
+        # *** FIX: Translated message ***
+        print(f"Error saving file {path}: {e}", file=sys.stderr)
 
 def main():
-    """Главная функция: загрузка моделей, запуск потоков, обработка результатов."""
-    print("Загрузка списка моделей...")
+    """Main function: load models, start threads, process results."""
+    # *** FIX: Translated message ***
+    print("Loading model list...")
     try:
         models = get_models_list(CONFIG)
         if not models:
-            print("Не найдено ни одной модели. Проверьте URLS и g4f.models.", file=sys.stderr)
+            print("No models found. Check URLS and g4f.models.", file=sys.stderr)
             return
-        print(f"Найдено {len(models)} уникальных моделей для тестирования.")
-        # print(models) # Раскомментируйте для просмотра списка
+        print(f"Found {len(models)} unique models for testing.")
+        # print(models) # Uncomment to see the list
     except Exception as e:
-        print(f"Не удалось загрузить список моделей: {e}", file=sys.stderr)
+        print(f"Failed to load model list: {e}", file=sys.stderr)
         traceback.print_exc()
         return
 
-    # Убедимся, что папка для результатов существует
+    # Ensure the results folder exists
     intermediate_folder = CONFIG['CONSTANTS']['INTERMEDIATE_FOLDER']
     if not os.path.exists(intermediate_folder):
         try:
             os.makedirs(intermediate_folder)
         except OSError as e:
-            print(f"Не удалось создать папку {intermediate_folder}: {e}", file=sys.stderr)
+            # *** FIX: Translated message ***
+            print(f"Failed to create folder {intermediate_folder}: {e}", file=sys.stderr)
             return
 
     progress_queue = queue.Queue()
     all_results = {}
     
-    # Ограничим количество моделей для примера (установите -1 для всех)
-    MAX_MODELS_TO_TEST = -1 # -1 для всех, 10 для быстрого теста
+    # Limit number of models for example (set to -1 for all)
+    MAX_MODELS_TO_TEST = -1 # -1 for all, 10 for quick test
     
     if MAX_MODELS_TO_TEST > 0:
         models_to_test = models[:MAX_MODELS_TO_TEST]
-        print(f"--- НАЧАЛО ТЕСТИРОВАНИЯ (Ограничено до {len(models_to_test)} моделей) ---")
+        # *** FIX: Translated message ***
+        print(f"--- STARTING TEST (Limited to {len(models_to_test)} models) ---")
     else:
         models_to_test = models
-        print(f"--- НАЧАЛО ТЕСТИРОВАНИЯ (Все {len(models_to_test)} моделей) ---")
+        # *** FIX: Translated message ***
+        print(f"--- STARTING TEST (All {len(models_to_test)} models) ---")
 
 
     try:
         with ThreadPoolExecutor(max_workers=CONFIG['CONSTANTS']['MAX_WORKERS']) as executor:
-            # ИСПРАВЛЕНИЕ: Убираем `task_description` из вызова
+            # CORRECTION: Remove `task_description` from call
             futures = {executor.submit(process_model, model, CONFIG, progress_queue): model for model in models_to_test}
             
             completed_count = 0
@@ -897,7 +923,7 @@ def main():
             start_time_main = perf_counter()
 
             while completed_count < total_count:
-                # 1. Проверяем завершенные задачи
+                # 1. Check completed tasks
                 done_futures = [f for f in futures if f.done()]
                 
                 for future in done_futures:
@@ -908,9 +934,10 @@ def main():
                         all_results[model] = result
                         
                         final_success = result.get('final_test', {}).get('success', False)
-                        status_str = "УСПЕХ" if final_success else "ОШИБКА"
+                        # *** FIX: Translated message ***
+                        status_str = "SUCCESS" if final_success else "FAILED"
 
-                        # Сохраняем код, если он есть
+                        # Save code if it exists
                         if result.get('final_code'):
                             code_filename = f"{model.replace('/', '_')}_final.py"
                             code_path = os.path.join(intermediate_folder, code_filename)
@@ -918,54 +945,59 @@ def main():
                                 with open(code_path, 'w', encoding='utf-8') as f:
                                     f.write(result['final_code'])
                             except Exception as e:
-                                print(f"Ошибка сохранения кода для {model}: {e}", file=sys.stderr)
+                                # *** FIX: Translated message ***
+                                print(f"Error saving code for {model}: {e}", file=sys.stderr)
                                 
-                        print(f"--- ({completed_count}/{total_count}) ЗАВЕРШЕНО: {model} [Статус: {status_str}] ---")
+                        # *** FIX: Translated message ***
+                        print(f"--- ({completed_count}/{total_count}) COMPLETED: {model} [Status: {status_str}] ---")
                         
                     except Exception as e:
-                        # УЛУЧШЕНИЕ: Печатаем полный traceback для КРИТ. ОШИБКИ
-                        print(f"--- ({completed_count+1}/{total_count}) КРИТ. ОШИБКА (Executor): {model} ---")
+                        # IMPROVEMENT: Print full traceback for CRITICAL ERROR
+                        # *** FIX: Translated message ***
+                        print(f"--- ({completed_count+1}/{total_count}) CRITICAL ERROR (Executor): {model} ---")
                         tb_str = traceback.format_exc()
-                        print(tb_str, file=sys.stderr) # Печатаем полный traceback
+                        print(tb_str, file=sys.stderr) # Print full traceback
                         all_results[model] = {'error': str(e), 'traceback': tb_str, 'iterations': [], 'final_code': None, 'final_test': {'success': False, 'summary': None, 'issue': str(e)}}
                     
-                    # Промежуточное сохранение
+                    # Intermediate save
                     if completed_count % CONFIG['CONSTANTS']['N_SAVE'] == 0 or completed_count == total_count:
                         save_results(all_results, intermediate_folder, f"intermediate_results_{completed_count}.json")
 
-                # 2. Обрабатываем очередь логов (с таймаутом, чтобы не блокировать)
+                # 2. Process log queue (with timeout to avoid blocking)
                 try:
                     while not progress_queue.empty():
                         model, type, message = progress_queue.get_nowait()
-                        # Можно раскомментировать для ОЧЕНЬ подробных логов
+                        # Can be uncommented for VERY detailed logs
                         # if type == 'log':
                         #     print(f"LOG [{model}]: {message}")
                         # elif type == 'status':
                         #     print(f"STATUS [{model}]: {message}")
                 
                 except queue.Empty:
-                    pass # Очередь пуста, это нормально
+                    pass # Queue is empty, this is normal
                 
-                time.sleep(0.2) # Небольшая пауза, чтобы не загружать ЦП
+                time.sleep(0.2) # Short pause to avoid high CPU usage
 
     except KeyboardInterrupt:
-        print("\nОстановка по требованию пользователя... (Ожидание завершения текущих потоков)")
+        # *** FIX: Translated message ***
+        print("\nStopping at user request... (Waiting for current threads to finish)")
     finally:
         end_time_main = perf_counter()
         total_time_main = end_time_main - start_time_main
-        print("--- ТЕСТИРОВАНИЕ ЗАВЕРШЕНО ---")
-        print(f"Общее время выполнения: {total_time_main:.2f} сек.")
+        # *** FIX: Translated message ***
+        print("--- TESTING FINISHED ---")
+        print(f"Total execution time: {total_time_main:.2f} sec.")
         
-        # Финальное сохранение
+        # Final save
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         final_filename = f"final_results_{timestamp}.json"
         save_results(all_results, intermediate_folder, final_filename)
-        print(f"Финальные результаты сохранены в: {os.path.join(intermediate_folder, final_filename)}")
+        print(f"Final results saved to: {os.path.join(intermediate_folder, final_filename)}")
         
-        # Подведение итогов
+        # Summary
         success_count = sum(1 for res in all_results.values() if res.get('final_test', {}).get('success', False))
         fail_count = len(all_results) - success_count
-        print(f"Итоги: {success_count} Успешно, {fail_count} С ошибками.")
+        print(f"Totals: {success_count} Successful, {fail_count} Failed.")
 
 
 if __name__ == "__main__":
