@@ -1,106 +1,177 @@
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import glob
 from collections import Counter
-from tabulate import tabulate
 
-def analyze_results(file_path):
+# --- Настройки ---
+RESULTS_FOLDER = 'промежуточные результаты'
+REPORT_FILENAME = 'benchmark_analysis_report.txt'
+PIE_CHART_FILENAME = 'benchmark_pie_chart.png'
+BAR_CHART_FILENAME = 'benchmark_top5_performance.png'
+TOP_N_MODELS = 5
+# ---
+
+def find_latest_results_file(folder: str) -> str | None:
+    """Находит последний по времени JSON-файл с результатами в папке."""
+    list_of_files = glob.glob(os.path.join(folder, 'final_results_*.json'))
+    if not list_of_files:
+        return None
+    latest_file = max(list_of_files, key=os.path.getctime)
+    return latest_file
+
+def load_and_parse_data(filepath: str) -> pd.DataFrame:
     """
-    Загружает и анализирует JSON-файл с результатами, 
-    собирая данные для отчета и статистику по ошибкам.
+    Загружает JSON-файл и парсит его в DataFrame.
+    Структура JSON: { 'model_name': {'final_test': {...}, ...} }
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
-    except FileNotFoundError:
-        print(f"Ошибка: Файл '{file_path}' не найден.")
-        return None, None
-    except json.JSONDecodeError:
-        print(f"Ошибка: Не удалось декодировать JSON из файла '{file_path}'.")
-        return None, None
+    except Exception as e:
+        print(f"Ошибка: Не удалось прочитать или декодировать файл {filepath}. {e}")
+        return pd.DataFrame()
 
-    results = data.get('results', [])
-    if not results:
-        print("В файле не найдено поле 'results'.")
-        return None, None
-
-    report_data = []
-    issue_counter = Counter()
-
-    for result in results:
-        model_name = result.get('model', 'N/A')
-        final_test = result.get('final_test', {})
+    parsed_data = []
+    for model_name, results in data.items():
+        final_test = results.get('final_test', {})
         success = final_test.get('success', False)
+        summary = final_test.get('summary', {})
         
         if success:
+            # Для успешных моделей берем реальные метрики
+            avg_time = summary.get('avg_time', float('inf'))
+            max_mem = summary.get('max_memory_kb')
             issue = "Success"
         else:
+            # Для провальных ставим 'inf' и берем причину
+            avg_time = float('inf')
+            max_mem = None
             issue = final_test.get('issue', 'Unknown Error')
             
-        issue_counter[issue] += 1
-        
-        report_data.append({
-            "Model": model_name,
-            "Success": "Да" if success else "Нет",
-            "Details": final_test.get('summary') if success else issue
+            # Упрощаем длинные ошибки (часто это JSON с тестами)
+            if isinstance(issue, str) and issue.startswith('{'):
+                try:
+                    # Попробуем взять первую причину сбоя
+                    issue_json = json.loads(issue)
+                    first_fail = issue_json.get('failing_cases', [{}])[0]
+                    issue = first_fail.get('error', 'Test mismatch')
+                except json.JSONDecodeError:
+                    issue = "Test mismatch (JSON output)" # Ошибка парсинга JSON
+
+        parsed_data.append({
+            'Model': model_name,
+            'Success': success,
+            'Avg_Time (s)': avg_time,
+            'Max_Memory (KB)': max_mem,
+            'Result_Details': issue
         })
-
-    return report_data, issue_counter
-
-def save_summary_table(report_data, save_path='model_results_summary.txt'):
-    """
-    Сохраняет данные отчета в виде таблицы в файл.
-    """
-    if not report_data:
-        print("Нет данных для отображения в таблице.")
-        return
-    
-    # Создаем DataFrame для удобной работы
-    df = pd.DataFrame(report_data)
-    
-    # Используем tabulate для красивого вывода
-    with open(save_path, 'w', encoding='utf-8') as f:
-        f.write("### Сводный отчет по результатам тестирования моделей ###\n")
-        f.write(tabulate(df, headers='keys', tablefmt='grid', showindex=False))
-    print(f"Сводный отчет сохранен в файл: {save_path}")
-
-def save_issue_summary(issue_counter, save_path='model_results_summary.png'):
-    """
-    Создает и сохраняет круговую диаграмму по причинам сбоев/успехов.
-    """
-    if not issue_counter:
-        print("Нет данных для построения графика.")
-        return
-
-    labels = issue_counter.keys()
-    sizes = issue_counter.values()
-
-    # Создание графика
-    plt.figure(figsize=(10, 7))
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, 
-            textprops={'fontsize': 10})
-    
-    plt.title('Распределение результатов тестирования (Успех / Причины сбоев)')
-    plt.axis('equal')  # Делает диаграмму круглой
-    
-    # Сохранение файла
-    plt.savefig(save_path)
-    print(f"График с результатами сохранен в файл: {save_path}")
-
-def main():
-    """
-    Главная функция скрипта.
-    """
-    file_path = 'final_results.json'  # Убедитесь, что файл в той же папке
-    
-    report_data, issue_counter = analyze_results(file_path)
-    
-    if report_data and issue_counter:
-        # 1. Сохранить таблицу
-        save_summary_table(report_data)
         
-        # 2. Сохранить график
-        save_issue_summary(issue_counter)
+    return pd.DataFrame(parsed_data)
 
-if __name__ == '__main__':
-    main()
+def generate_report(df: pd.DataFrame):
+    """
+    Генерирует текстовый отчет, таблицы и сохраняет графики.
+    """
+    if df.empty:
+        print("Нет данных для анализа.")
+        return
+
+    # --- 1. Подготовка данных ---
+    total_models = len(df)
+    successful_df = df[df['Success'] == True].sort_values(by='Avg_Time (s)')
+    failed_df = df[df['Success'] == False]
+    
+    success_count = len(successful_df)
+    fail_count = len(failed_df)
+    
+    # Статистика по ошибкам
+    error_counts = Counter(failed_df['Result_Details'])
+    
+    # --- 2. Генерация текстового отчета (и в файл, и в консоль) ---
+    report_lines = []
+    report_lines.append("="*80)
+    report_lines.append("                ОТЧЕТ ПО БЕНЧМАРКУ РЕАЛИЗАЦИЙ АЛГОРИТМА LRX")
+    report_lines.append("="*80)
+    report_lines.append("\n## 1. Критерии ранжирования моделей\n")
+    report_lines.append("Лучшая модель определяется по следующим приоритетным критериям:")
+    report_lines.append("  1. **Корректность (Success = True):** Самый важный критерий. Модель должна")
+    report_lines.append("     пройти *все* тесты, включая пограничные случаи (пустые списки, n=1, n=2).")
+    report_lines.append("  2. **Среднее время выполнения (Avg_Time):** Среди *корректных* моделей,")
+    report_lines.append("     предпочтение отдается тем, чей код выполняется быстрее.")
+    report_lines.append("  3. **Потребление памяти (Max_Memory):** Дополнительный критерий для оценки")
+    report_lines.append("     эффективности (в данном тесте менее показателен, чем время).\n")
+
+    report_lines.append("---")
+    report_lines.append("## 2. Общая статистика\n")
+    
+    summary_table = pd.DataFrame({
+        'Метрика': ['Всего протестировано моделей', 'Успешно прошли тест', 'Провалили тест'],
+        'Значение': [total_models, success_count, fail_count]
+    })
+    report_lines.append(summary_table.to_string(index=False))
+    report_lines.append("\n")
+
+    # --- 3. Выбор лучшей модели ---
+    report_lines.append("---")
+    report_lines.append("## 3. Выбор лучшей модели\n")
+    if not successful_df.empty:
+        best_model = successful_df.iloc[0]
+        report_lines.append(f"🏆 **Лучшая модель: {best_model['Model']}** 🏆\n")
+        report_lines.append("Она показала наилучшее среднее время выполнения среди всех корректных реализаций.\n")
+        report_lines.append(f"  - Среднее время: {best_model['Avg_Time (s)']:.6f} сек.")
+        report_lines.append(f"  - Макс. память: {best_model['Max_Memory (KB)']} KB\n")
+    else:
+        report_lines.append("❌ **Лучшая модель не найдена.**\n")
+        report_lines.append("Ни одна из протестированных моделей не смогла пройти полный набор тестов.\n")
+
+    # --- 4. Топ N успешных моделей (таблица) ---
+    if not successful_df.empty:
+        report_lines.append("---")
+        report_lines.append(f"## 4. Топ-{TOP_N_MODELS} успешных моделей (по времени выполнения)\n")
+        
+        # Форматируем для вывода
+        top_n_df = successful_df.head(TOP_N_MODELS).copy()
+        top_n_df['Avg_Time (s)'] = top_n_df['Avg_Time (s)'].map('{:,.6f}'.format)
+        top_n_df['Max_Memory (KB)'] = top_n_df['Max_Memory (KB)'].map('{:,.0f}'.format)
+        top_n_df.drop(columns=['Success', 'Result_Details'], inplace=True)
+        top_n_df.reset_index(drop=True, inplace=True)
+        top_n_df.index = top_n_df.index + 1
+        top_n_df.index.name = "Rank"
+        
+        report_lines.append(top_n_df.to_string())
+        report_lines.append("\n")
+    
+    # --- 5. Анализ ошибок (таблица) ---
+    if not failed_df.empty:
+        report_lines.append("---")
+        report_lines.append("## 5. Анализ основных причин сбоев\n")
+        
+        error_df = pd.DataFrame(error_counts.items(), columns=['Причина сбоя', 'Кол-во моделей'])
+        error_df = error_df.sort_values(by='Кол-во моделей', ascending=False)
+        error_df.reset_index(drop=True, inplace=True)
+        
+        report_lines.append(error_df.to_string(index=False))
+        report_lines.append("\n")
+
+    report_lines.append("="*80)
+    report_lines.append(f"Полный отчет сохранен в: {REPORT_FILENAME}")
+    report_lines.append(f"Графики сохранены в: {PIE_CHART_FILENAME}, {BAR_CHART_FILENAME}")
+    report_lines.append("="*80)
+
+    # --- 6. Вывод в консоль и сохранение в файл ---
+    report_text = "\n".join(report_lines)
+    print(report_text)
+    
+    try:
+        with open(REPORT_FILENAME, 'w', encoding='utf-8') as f:
+            f.write(report_text)
+    except Exception as e:
+        print(f"Не удалось сохранить текстовый отчет: {e}")
+
+    # --- 7. Генерация графиков ---
+    
+    # График 1: Круговая диаграмма (Success vs Fail)
+    try:
+        plt.figure(figsize=(8, 6))
