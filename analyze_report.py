@@ -47,22 +47,24 @@ def analyze_results(file_path):
 
     return report_data, issue_counter
 
-def display_summary_table(report_data):
+def save_summary_table(report_data, save_path='model_results_summary.txt'):
     """
-    Выводит данные отчета в виде красивой таблицы в консоль.
+    Сохраняет данные отчета в виде таблицы в файл.
     """
     if not report_data:
         print("Нет данных для отображения в таблице.")
         return
-        
+    
     # Создаем DataFrame для удобной работы
     df = pd.DataFrame(report_data)
     
     # Используем tabulate для красивого вывода
-    print("### Сводный отчет по результатам тестирования моделей ###")
-    print(tabulate(df, headers='keys', tablefmt='grid', showindex=False))
+    with open(save_path, 'w', encoding='utf-8') as f:
+        f.write("### Сводный отчет по результатам тестирования моделей ###\n")
+        f.write(tabulate(df, headers='keys', tablefmt='grid', showindex=False))
+    print(f"Сводный отчет сохранен в файл: {save_path}")
 
-def plot_issue_summary(issue_counter, save_path='model_results_summary.png'):
+def save_issue_summary(issue_counter, save_path='model_results_summary.png'):
     """
     Создает и сохраняет круговую диаграмму по причинам сбоев/успехов.
     """
@@ -83,25 +85,22 @@ def plot_issue_summary(issue_counter, save_path='model_results_summary.png'):
     
     # Сохранение файла
     plt.savefig(save_path)
-    print(f"\n")
     print(f"График с результатами сохранен в файл: {save_path}")
 
 def main():
     """
     Главная функция скрипта.
     """
-    file_path = 'final_results.json' # Убедитесь, что файл в той же папке
+    file_path = 'final_results.json'  # Убедитесь, что файл в той же папке
     
     report_data, issue_counter = analyze_results(file_path)
     
     if report_data and issue_counter:
-        # 1. Показать таблицу
-        display_summary_table(report_data)
+        # 1. Сохранить таблицу
+        save_summary_table(report_data)
         
-        print("\n" + "="*30 + "\n")
-        
-        # 2. Показать график
-        plot_issue_summary(issue_counter)
+        # 2. Сохранить график
+        save_issue_summary(issue_counter)
 
 if __name__ == '__main__':
     main()
