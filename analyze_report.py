@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import glob
 from collections import Counter
+import sys
 
 # --- Настройки ---
 RESULTS_FOLDER = 'промежуточные результаты'
@@ -15,7 +16,7 @@ TOP_N_MODELS = 5
 
 def find_latest_results_file(folder: str) -> str | None:
     """Находит последний по времени JSON-файл с результатами в папке."""
-    list_of_files = glob.glob(os.path.join(folder, 'final_results.json'))
+    list_of_files = glob.glob(os.path.join(folder, 'final_results_*.json'))
     if not list_of_files:
         return None
     latest_file = max(list_of_files, key=os.path.getctime)
@@ -59,6 +60,11 @@ def load_and_parse_data(filepath: str) -> pd.DataFrame:
                     issue = first_fail.get('error', 'Test mismatch')
                 except json.JSONDecodeError:
                     issue = "Test mismatch (JSON output)" # Ошибка парсинга JSON
+            
+            # Улучшение: убираем лишние переносы строк из ошибок
+            if isinstance(issue, str):
+                issue = issue.split('\n')[0]
+
 
         parsed_data.append({
             'Model': model_name,
@@ -134,7 +140,7 @@ def generate_report(df: pd.DataFrame):
         # Форматируем для вывода
         top_n_df = successful_df.head(TOP_N_MODELS).copy()
         top_n_df['Avg_Time (s)'] = top_n_df['Avg_Time (s)'].map('{:,.6f}'.format)
-        top_n_df['Max_Memory (KB)'] = top_n_df['Max_Memory (KB)'].map('{:,.0f}'.format)
+        top_n_df['Max_Memory (KB)'] = top_n_df['Max_Memory (KB)'].map(lambda x: '{:,.0f}'.format(x) if pd.notnull(x) else 'N/A')
         top_n_df.drop(columns=['Success', 'Result_Details'], inplace=True)
         top_n_df.reset_index(drop=True, inplace=True)
         top_n_df.index = top_n_df.index + 1
@@ -152,7 +158,7 @@ def generate_report(df: pd.DataFrame):
         error_df = error_df.sort_values(by='Кол-во моделей', ascending=False)
         error_df.reset_index(drop=True, inplace=True)
         
-        report_lines.append(error_df.to_string(index=False))
+        report_lines.append(error_df.to_string(index=False, max_colwidth=80)) # Ограничим ширину колонки
         report_lines.append("\n")
 
     report_lines.append("="*80)
@@ -175,65 +181,81 @@ def generate_report(df: pd.DataFrame):
     # График 1: Круговая диаграмма (Success vs Fail)
     try:
         plt.figure(figsize=(8, 6))
-        labels = ['Успех', 'Сбой']
         sizes = [success_count, fail_count]
+        labels = [f'Успешно ({success_count})', f'С ошибкой ({fail_count})']
         colors = ['#4CAF50', '#F44336']
-        
-        if success_count == 0 and fail_count == 0:
-             print("Нет данных для круговой диаграммы.")
-        else:
-            plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-                    startangle=90, textprops={'fontsize': 12})
-            plt.title(f'Общая успеваемость моделей (Всего: {total_models})', fontsize=14)
-            plt.axis('equal')
-            plt.savefig(PIE_CHART_FILENAME)
-            plt.close()
-    except Exception as e:
-        # *********** ЭТО ИСПРАВЛЕНИЕ ***********
-        # Эта строка была пропущена, что и вызывало SyntaxError
-        print(f"Не удалось создать круговую диаграмму: {e}")
-        # *****************************************
+        explode = (0.1, 0) if success_count > 0 else (0, 0)
 
-    # График 2: Топ-N Модели (Bar chart)
+        plt.pie(sizes, explode=explode, labels=labels, colors=colors,
+                autopct='%1.1f%%', shadow=True, startangle=140)
+        
+        plt.title('Общие результаты бенчмарка (Успех vs. Ошибка)')
+        plt.axis('equal') # Гарантирует, что диаграмма круглая
+        
+        plt.savefig(PIE_CHART_FILENAME)
+        plt.close()
+        print(f"Круговая диаграмма сохранена в {PIE_CHART_FILENAME}")
+    except Exception as e:
+        print(f"Не удалось создать круговую диаграмму: {e}")
+
+    # График 2: Столбчатая диаграмма (Топ N по времени)
     try:
         if not successful_df.empty:
-            top_n_chart_df = successful_df.head(TOP_N_MODELS).sort_values(by='Avg_Time (s)', ascending=False)
+            top_n_plot = successful_df.head(TOP_N_MODELS).sort_values(by='Avg_Time (s)', ascending=True)
             
-            plt.figure(figsize=(10, max(5, TOP_N_MODELS * 0.8)))
-            plt.barh(top_n_chart_df['Model'], top_n_chart_df['Avg_Time (s)'], color='skyblue')
-            plt.xlabel('Среднее время выполнения (секунды)')
-            plt.ylabel('Модель')
-            plt.title(f'Топ-{TOP_N_MODELS} самых быстрых *корректных* моделей')
-            plt.xscale('log') # Логарифмическая шкала, т.к. разброс может быть большим
-            plt.grid(axis='x', linestyle='--', alpha=0.6)
-            plt.tight_layout()
+            plt.figure(figsize=(10, 7))
+            
+            # Используем .astype(str) для моделей, чтобы избежать проблем с категориальными данными
+            models = top_n_plot['Model'].astype(str)
+            times = top_n_plot['Avg_Time (s)']
+            
+            bars = plt.bar(models, times, color='skyblue')
+            
+            plt.xlabel('Модель')
+            plt.ylabel('Среднее время (сек)')
+            plt.title(f'Топ-{TOP_N_MODELS} моделей по производительности (Меньше = Лучше)')
+            plt.xticks(rotation=45, ha='right')
+            
+            # Добавляем значения над столбцами
+            plt.bar_label(bars, fmt='%.5f', padding=3)
+            
+            plt.tight_layout() # Подгоняем метки, чтобы они не вылезали
+            
             plt.savefig(BAR_CHART_FILENAME)
             plt.close()
+            print(f"Столбчатая диаграмма сохранена в {BAR_CHART_FILENAME}")
+        else:
+            print("Пропуск графика Top-N: нет успешных моделей.")
     except Exception as e:
-        print(f"Не удалось создать гистограмму производительности: {e}")
+        print(f"Не удалось создать столбчатую диаграмму: {e}")
 
 
 def main():
-    """Главная функция: найти файл, загрузить, проанализировать."""
-    print(f"Поиск последнего файла с результатами в папке '{RESULTS_FOLDER}'...")
+    """
+    Главная функция для запуска анализа.
+    """
+    print(f"Поиск файлов с результатами в папке: '{RESULTS_FOLDER}'...")
+    
+    # Проверка, которая приводила к ошибке в логах
+    if not os.path.exists(RESULTS_FOLDER):
+        print(f"Ошибка: Папка с результатами '{RESULTS_FOLDER}' не найдена.")
+        print("Пожалуйста, сначала запустите 'test_code_LRX.py' для генерации результатов.")
+        sys.exit(1) # Выход с кодом ошибки
+
     latest_file = find_latest_results_file(RESULTS_FOLDER)
     
     if not latest_file:
-        print(f"Ошибка: Не найдено ни одного 'final_results_*.json' файла в папке '{RESULTS_FOLDER}'.")
-        print(f"Пожалуйста, сначала запустите 'test_code_LRX.py', чтобы сгенерировать файл с результатами.")
-        return
+        print(f"Ошибка: Не найдены файлы 'final_results_*.json' в папке '{RESULTS_FOLDER}'.")
+        sys.exit(1)
 
-    print(f"Найден файл: {latest_file}")
-    print("Загрузка и парсинг данных...")
+    print(f"Анализ последнего файла: {latest_file}")
+    
     df = load_and_parse_data(latest_file)
     
-    if df.empty:
-        print("Данные не были загружены. Анализ прерван.")
-        return
-        
-    print("Генерация отчета и графиков...")
-    generate_report(df)
-    print("Анализ завершен.")
+    if not df.empty:
+        generate_report(df)
+    else:
+        print("Данные не загружены (DataFrame пуст), генерация отчета пропущена.")
 
 if __name__ == "__main__":
     main()
