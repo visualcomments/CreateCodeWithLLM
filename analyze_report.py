@@ -175,3 +175,65 @@ def generate_report(df: pd.DataFrame):
     # График 1: Круговая диаграмма (Success vs Fail)
     try:
         plt.figure(figsize=(8, 6))
+        labels = ['Успех', 'Сбой']
+        sizes = [success_count, fail_count]
+        colors = ['#4CAF50', '#F44336']
+        
+        if success_count == 0 and fail_count == 0:
+             print("Нет данных для круговой диаграммы.")
+        else:
+            plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+                    startangle=90, textprops={'fontsize': 12})
+            plt.title(f'Общая успеваемость моделей (Всего: {total_models})', fontsize=14)
+            plt.axis('equal')
+            plt.savefig(PIE_CHART_FILENAME)
+            plt.close()
+    except Exception as e:
+        # *********** ЭТО ИСПРАВЛЕНИЕ ***********
+        # Эта строка была пропущена, что и вызывало SyntaxError
+        print(f"Не удалось создать круговую диаграмму: {e}")
+        # *****************************************
+
+    # График 2: Топ-N Модели (Bar chart)
+    try:
+        if not successful_df.empty:
+            top_n_chart_df = successful_df.head(TOP_N_MODELS).sort_values(by='Avg_Time (s)', ascending=False)
+            
+            plt.figure(figsize=(10, max(5, TOP_N_MODELS * 0.8)))
+            plt.barh(top_n_chart_df['Model'], top_n_chart_df['Avg_Time (s)'], color='skyblue')
+            plt.xlabel('Среднее время выполнения (секунды)')
+            plt.ylabel('Модель')
+            plt.title(f'Топ-{TOP_N_MODELS} самых быстрых *корректных* моделей')
+            plt.xscale('log') # Логарифмическая шкала, т.к. разброс может быть большим
+            plt.grid(axis='x', linestyle='--', alpha=0.6)
+            plt.tight_layout()
+            plt.savefig(BAR_CHART_FILENAME)
+            plt.close()
+    except Exception as e:
+        print(f"Не удалось создать гистограмму производительности: {e}")
+
+
+def main():
+    """Главная функция: найти файл, загрузить, проанализировать."""
+    print(f"Поиск последнего файла с результатами в папке '{RESULTS_FOLDER}'...")
+    latest_file = find_latest_results_file(RESULTS_FOLDER)
+    
+    if not latest_file:
+        print(f"Ошибка: Не найдено ни одного 'final_results_*.json' файла в папке '{RESULTS_FOLDER}'.")
+        print(f"Пожалуйста, сначала запустите 'test_code_LRX.py', чтобы сгенерировать файл с результатами.")
+        return
+
+    print(f"Найден файл: {latest_file}")
+    print("Загрузка и парсинг данных...")
+    df = load_and_parse_data(latest_file)
+    
+    if df.empty:
+        print("Данные не были загружены. Анализ прерван.")
+        return
+        
+    print("Генерация отчета и графиков...")
+    generate_report(df)
+    print("Анализ завершен.")
+
+if __name__ == "__main__":
+    main()
