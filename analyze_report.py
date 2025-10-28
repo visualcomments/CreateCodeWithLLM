@@ -15,7 +15,7 @@ TOP_N_MODELS = 5
 
 def find_latest_results_file(folder: str) -> str | None:
     """Находит последний по времени JSON-файл с результатами в папке."""
-    list_of_files = glob.glob(os.path.join(folder, 'final_results_*.json'))
+    list_of_files = glob.glob(os.path.join(folder, 'final_results.json'))
     if not list_of_files:
         return None
     latest_file = max(list_of_files, key=os.path.getctime)
