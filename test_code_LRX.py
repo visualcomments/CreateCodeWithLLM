@@ -56,21 +56,24 @@ def clean_code(code: str) -> str:
 
     # Step 2: If JSON didn't work or content_from_json is empty, search for markdown block in original
     # Find first block ```python\n... (up to next ``` or end)
-    match = re.search(r'
+    
+    # === ИСПРАВЛЕНИЕ 1 (Было: match = re.search(r'...) ===
+    match = re.search(r'```(?:python\n)?(.*?)\n```', code, re.DOTALL | re.MULTILINE)
 
-        if match:
+    if match:
         code = match.group(1)
     # Alternative: if block without closing ```, search from first ``` to end
     else:
-        match = re.search(r'
-
+        # === ИСПРАВЛЕНИЕ 2 (Было: match = re.search(r'...) ===
+        match = re.search(r'```(?:python\n)?(.*?)$', code, re.DOTALL | re.MULTILINE)
 
         if match:
             code = match.group(1)
 
     # Step 3: Final regex cleanup (for nested markdown)
     # Remove ```python block at start
-    code = re.sub(r'^
+    # === ИСПРАВЛЕНИЕ 3 (Было: code = re.sub(r'^...) ===
+    code = re.sub(r'^```(?:python\n)?', '', code, flags=re.MULTILINE)
 
     # Remove ``` block at end
     code = re.sub(r'\n?```\s*$', '', code, flags=re.MULTILINE)
