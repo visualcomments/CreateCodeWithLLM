@@ -55,20 +55,23 @@ def clean_code(code: str) -> str:
         pass  # Not JSON — continue
 
     # Step 2: If JSON didn't work or content_from_json is empty, search for markdown block in original
-    if content_from_json is None or not content_from_json.strip():
-        # Find first block ```python\n... (up to next ``` or end)
-        match = re.search(r'```(?:python)?\s*\n(.*?)(?=\n?```\s*$|\Z)', code, re.DOTALL | re.MULTILINE)
+    # Find first block ```python\n... (up to next ``` or end)
+    match = re.search(r'
+
+        if match:
+        code = match.group(1)
+    # Alternative: if block without closing ```, search from first ``` to end
+    else:
+        match = re.search(r'
+
+
         if match:
             code = match.group(1)
-        # Alternative: if block without closing ```, search from first ``` to end
-        else:
-            match = re.search(r'```(?:python)?\s*\n(.*)', code, re.DOTALL | re.MULTILINE)
-            if match:
-                code = match.group(1)
 
     # Step 3: Final regex cleanup (for nested markdown)
     # Remove ```python block at start
-    code = re.sub(r'^```(?:python)?\s*\n?', '', code, flags=re.MULTILINE)
+    code = re.sub(r'^
+
     # Remove ``` block at end
     code = re.sub(r'\n?```\s*$', '', code, flags=re.MULTILINE)
     # Remove extra newlines at start and end
@@ -180,18 +183,20 @@ except AttributeError:
      print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
 
 
+# =============================================================================
+# === CONFIG: PROMPTS UPDATED FOR SORTING TASK ===
+# =============================================================================
+
 CONFIG = {
     # Section with URLs for downloading data about working models
     'URLS': {
         # URL of the file with test results for working g4f models
-        # *** FIX: Removed Markdown formatting from the URL ***
         'WORKING_RESULTS': '[https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt](https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt)'
     },
 
     # Section with prompts for various stages of interaction with LLM
     'PROMPTS': {
-        # This prompt contains {n-1}, which breaks .format(task=...).
-        # We will no longer format it.
+        # This is the NEW task (Prompt 2)
         'INITIAL': r"""
 Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed moves (L, R, X).
 
@@ -223,7 +228,7 @@ Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed
         sorted_array is the final sorted array after applying all moves to a copy of the input vector.
     The algorithm must be a sorting algorithm that uses only L, R, X to transform the vector into sorted order (e.g., an adaptation of a search-based sorter like BFS for shortest path in the Cayley graph, or a heuristic sorter).
     Include a CLI interface:
-        When the script is executed directly, it should accept a vector as a command-line argument.
+        When the script is executed directly, it should accept a vector as a command-line argument (parse sys.argv[1] as JSON). Use [3, 1, 2] as a fallback if no arg is given.
         The output should be a JSON object with keys "moves" and "sorted_array".
     Include a minimal example in the main block for quick testing.
     The code must be fully self-contained and executable without external dependencies.
@@ -238,12 +243,11 @@ Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed
         "moves": ["X", "L", "R", "X"],
         "sorted_array": [1,2,3]
     }
-
 """,
-
+        # NEW FIX prompt for the sorting task
         'FIX': r"""
-You are a Python debugging assistant. The following code did not work correctly.
-Fix it to run correctly, follow the `L, R, X` function interfaces, and produce **only CLI JSON output**.
+You are a Python debugging assistant. The following code, intended to be an LRX sorting algorithm, did not work correctly.
+Fix it to meet all requirements.
 
 Code:
 {code}
@@ -252,29 +256,34 @@ Issue:
 {error}
 
 ⚠️ Requirements:
-• `L(vector)`, `R(vector)`, `X(vector)` must return **new** lists, not modify the input.
-• CLI: `import json`; parse `sys.argv[1]` with fallback [1, 2, 3, 4]; print only `json.dumps({{"L_result": L(vector), "R_result": R(vector), "X_result": X(vector)}})`.
-• Use try-except to catch missing arguments or invalid JSON.
+• Must implement a function `solve(vector)`.
+• `solve(vector)` must return a tuple (moves, sorted_array).
+• `moves` is a list of strings (e.g., ['L', 'X']).
+• `sorted_array` is the final, correctly sorted list.
+• CLI: `import json`, `import sys`; parse `sys.argv[1]` as JSON (use `try-except`, fallback to [3, 1, 2]).
+• Call `moves, sorted_array = solve(vector)`.
+• Print ONLY `json.dumps({{"moves": moves, "sorted_array": sorted_array}})`.
+• The sorting logic must use *only* L, R, X operations internally to modify the list state.
 • Self-contained, executable, immediately correct.
 • Only code in response, no extra prints or Markdown.
 """,
-
+        # NEW REFACTOR prompt for the sorting task
         'REFACTOR_NO_PREV': r"""
-You are an expert Python programmer. Refactor the following code:
+You are an expert Python programmer. Refactor the following LRX sorting code:
 
 {code}
 
 ⚠️ Goals:
-• Improve readability, structure, and efficiency of `L`, `R`, `X` (e.g., using slicing for new lists).
-• Ensure functions return **new** lists and do not modify the input.
-• Preserve CLI: parse `sys.argv[1]` as JSON with fallback [1, 2, 3, 4], print only `json.dumps({{"L_result": L(vector), "R_result": R(vector), "X_result": X(vector)}})`.
+• Improve the sorting algorithm's efficiency (e.g., using BFS for shortest path, or a more direct heuristic).
+• Ensure `solve(vector)` returns (moves, sorted_array).
+• Preserve CLI: parse `sys.argv[1]` (fallback [3, 1, 2]), print only `json.dumps({{"moves": moves, "sorted_array": sorted_array}})`.
 • Minimal example in __main__ must print JSON only.
 • Fully executable, immediately correct.
 • Only code in response, no explanations or Markdown.
 """,
-
+        # NEW REFACTOR prompt for the sorting task
         'REFACTOR': r"""
-You are an expert Python programmer. Compare the current and previous versions and perform a full refactor:
+You are an expert Python programmer. Compare the current and previous versions of this LRX sorter and perform a full refactor:
 
 Current code:
 {code}
@@ -283,65 +292,48 @@ Previous version:
 {prev}
 
 ⚠️ Goals:
-• Improve readability, structure, and efficiency of `L`, `R`, `X`.
-• Ensure functions return **new** lists and do not modify the input.
-• Preserve CLI: parse `sys.argv[1]` as JSON with fallback [1, 2, 3, 4]; print only `json.dumps({{"L_result": L(vector), "R_result": R(vector), "X_result": X(vector)}})`.
-• Minimal example in __main__ must print JSON only.
-• Code must pass verification (e.g., L([1,2,3]) == [2,3,1], R([1,2,3]) == [3,1,2], X([1,2,3]) == [2,1,3]).
+• Improve the sorting algorithm's efficiency (e.g., using BFS for shortest path, or a more direct heuristic).
+• Ensure `solve(vector)` returns (moves, sorted_array).
+• Preserve CLI: parse `sys.argv[1]` (fallback [3, 1, 2]), print only `json.dumps({{"moves": moves, "sorted_array": sorted_array}})`.
+• Code must pass verification (e.g., solve([3,1,2]) results in [1,2,3] and the moves list must be valid).
 • Only code in response, no explanations or Markdown.
 """
     },
 
     # Section with retry settings for different request types
     'RETRIES': {
-        # Retry settings for initial request: max 1 retry, backoff factor 1.0
         'INITIAL': {'max_retries': 1, 'backoff_factor': 1.0},
-        # Retry settings for fixes: max 3 retries, backoff factor 2.0 (exponential)
         'FIX': {'max_retries': 3, 'backoff_factor': 2.0}
     },
 
     # Section with system constants
     'CONSTANTS': {
-        # Delimiter in working_results.txt file strings (between Provider|Model|Type)
         'DELIMITER_MODEL': '|',
-        # Model type for filtering (only text models)
         'MODEL_TYPE_TEXT': 'text',
-        # Timeout for URL requests (in seconds)
-        'REQUEST_TIMEOUT': 10, # Reduced for faster fallback
-        # Frequency for saving intermediate results (every N models)
+        'REQUEST_TIMEOUT': 10,
         'N_SAVE': 100,
-        # Maximum number of parallel threads for processing models
-        'MAX_WORKERS': 10, # IMPROVEMENT: 50 is too much for Kaggle
-        # Timeout for code execution in subprocess (in seconds)
-        'EXEC_TIMEOUT': 5,
-        # Error message for code execution timeout
-        'ERROR_TIMEOUT': 'Timeout expired — the program likely entered an infinite loop.',
-        # Error message for no response from model
+        'MAX_WORKERS': 10,
+        'EXEC_TIMEOUT': 10, # Increased timeout for sorting
+        'ERROR_TIMEOUT': 'Timeout expired — the sorting algorithm is too slow or stuck in an infinite loop.',
         'ERROR_NO_RESPONSE': 'No response from model',
-        # Number of refactoring loops in process_model
         'NUM_REFACTOR_LOOPS': 3,
-        # Folder name for intermediate and final results
-        # *** FIX: Translated to English ***
         'INTERMEDIATE_FOLDER': 'results'
     },
 
     # Section with stage names for logs and statuses
-    # *** FIX: Translated to English ***
     'STAGES': {
-        # Stage for generating initial code
         'INITIAL': 'initial_response',
-        # Stage for fixing code before first refactor
         'FIX_INITIAL': 'fix_before_refactor',
-        # Stage for first refactor
         'REFACTOR_FIRST': 'refactor_first_response',
-        # Stage for fixing after first refactor
-        'FIX_AFTER_REFACTOR': 'fix_after_refactor',
-        # Stage for refactoring in a loop
+        'FIX_AFTER_REFACTOR': 'fix_after_revector',
         'REFACTOR': 'refactor_loop',
-        # Stage for fixing in a refactor loop
         'FIX_LOOP': 'fix_loop'
     }
 }
+# =============================================================================
+# === END OF CONFIG UPDATE ===
+# =============================================================================
+
 
 def get_models_list(config: Dict) -> List[str]:
     """
@@ -363,7 +355,6 @@ def get_models_list(config: Dict) -> List[str]:
                     if 'flux' not in model_name.lower():
                         working_models.add(model_name)
     except requests.RequestException as e:
-        # *** FIX: Translated message ***
         print(f"Warning: Failed to download {url_txt}. Reason: {e}. Using only g4f.models.", file=sys.stderr)
         text = ''
     
@@ -376,7 +367,6 @@ def get_models_list(config: Dict) -> List[str]:
             if 'flux' not in model_name.lower() and not any(sub in model_name.lower() for sub in ['image', 'vision', 'audio', 'video']):
                 g4f_models.add(model_name)
     except ImportError:
-        # *** FIX: Translated message ***
         print("Warning: Failed to import g4f.models. Model list may be incomplete.", file=sys.stderr)
         g4f_models = set()
     
@@ -386,35 +376,38 @@ def get_models_list(config: Dict) -> List[str]:
 
 
 # =============================================================================
-# === test_code() with CORRECTION in _expected_R ===
+# === test_code() REWRITTEN FOR SORTING TASK ===
 # =============================================================================
 
 def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
     """
-    Testing code (LRX) with various vectors, including edge cases.
+    Testing code (LRX Sorter) with various vectors, including edge cases.
+    This function is now completely different. It verifies:
+    1. The subprocess returns valid JSON: {"moves": [...], "sorted_array": [...]}
+    2. The "sorted_array" is actually sorted.
+    3. Applying the "moves" to the original vector produces the "sorted_array".
     """
     
-    # --- Ground Truth implementations of LRX for verification ---
-    def _expected_L(v):
-        """Reference left shift"""
-        if not v:
+    # --- Ground Truth: Move application functions for verification ---
+    def _apply_move(v_list: List, move: str) -> List:
+        """Applies a single move to a list and returns a new list."""
+        n = len(v_list)
+        if n == 0:
             return []
-        return v[1:] + v[:1]
-
-    def _expected_R(v):
-        """Reference right shift"""
-        if not v:
-            return []
-        # CORRECTION: v[-1:] (slice) instead of v['n-1'] (typo from repo)
-        return v[-1:] + v[:-1] 
-
-    def _expected_X(v):
-        """Reference transposition"""
-        if len(v) < 2:
-            return v[:]
-        # Create a new list, combining the swapped
-        # first two elements and the rest of the list
-        return [v[1], v[0]] + v[2:]
+        
+        if move == 'L':
+            return v_list[1:] + v_list[:1]
+        
+        if move == 'R':
+            return v_list[-1:] + v_list[:-1]
+            
+        if move == 'X':
+            if n < 2:
+                return v_list[:]
+            return [v_list[1], v_list[0]] + v_list[2:]
+            
+        # Invalid move
+        raise ValueError(f"Unknown move '{move}'")
     # ---
 
     test_results = []
@@ -422,7 +415,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
     failing_cases = []
     total_time = 0.0
     exec_timeout = config['CONSTANTS']['EXEC_TIMEOUT']
-    process = None  # For memory tracking
+    process = None
     temp_file_path = None
 
 
@@ -434,13 +427,9 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
         
         # Expected results (calculate before running)
         try:
-            exp_l = _expected_L(vector)
-            exp_r = _expected_R(vector)
-            exp_x = _expected_X(vector)
+            expected_sorted_list = sorted(vector)
         except Exception as e_gt:
-            # This error is not in the LLM code, but in *our* ground truth code.
-            # *** FIX: Translated message ***
-            err_msg = f"Error in ground truth function: {e_gt}"
+            err_msg = f"Error in ground truth function (sorted()): {e_gt}"
             print(err_msg, file=sys.stderr)
             traceback.print_exc()
             return {'n': n, 'success': False, 'error': err_msg, 'input': vector}, err_msg, False
@@ -451,9 +440,9 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             'success': False,
             'time': 0.0,
             'input': vector,
-            'L_result': None, 'expected_L': exp_l,
-            'R_result': None, 'expected_R': exp_r,
-            'X_result': None, 'expected_X': exp_x
+            'moves_result': None,
+            'array_result': None,
+            'expected_array': expected_sorted_list,
         }
 
         try:
@@ -464,11 +453,11 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                preexec_fn=None  # Windows-compatible
+                preexec_fn=None
             )
             stdout, stderr = child_process.communicate(timeout=exec_timeout)
             elapsed = perf_counter() - start_time
-            error_result_dict['time'] = elapsed # Update time even in case of error
+            error_result_dict['time'] = elapsed
 
             if child_process.returncode != 0:
                 err = stderr or 'Unknown error'
@@ -484,23 +473,44 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             try:
                 parsed = json.loads(output)
                 
-                # --- NEW LRX VERIFICATION BLOCK ---
-                l_res = parsed.get('L_result')
-                r_res = parsed.get('R_result')
-                x_res = parsed.get('X_result')
+                # --- NEW SORTER VERIFICATION BLOCK ---
+                moves_result = parsed.get('moves')
+                array_result = parsed.get('sorted_array')
+                
+                error_result_dict['moves_result'] = moves_result
+                error_result_dict['array_result'] = array_result
 
-                success_l = (l_res == exp_l)
-                success_r = (r_res == exp_r)
-                success_x = (x_res == exp_x)
-                success = success_l and success_r and success_x
+                # 1. Check if array is sorted
+                if array_result != expected_sorted_list:
+                    err = f"Array not sorted. Got {array_result}, expected {expected_sorted_list}"
+                    error_result_dict['error'] = err
+                    return error_result_dict, err, False
 
+                # 2. Check if moves is a list (or at least iterable)
+                if not isinstance(moves_result, list):
+                    err = f"Moves is not a list. Got {type(moves_result)}"
+                    error_result_dict['error'] = err
+                    return error_result_dict, err, False
+
+                # 3. Verify moves
+                try:
+                    temp_v = vector[:]
+                    for move in moves_result:
+                        temp_v = _apply_move(temp_v, move)
+                    
+                    if temp_v != array_result:
+                        err = f"Moves do not produce sorted array. Applying moves {moves_result} to {vector} produced {temp_v}, but expected {array_result}"
+                        error_result_dict['error'] = err
+                        return error_result_dict, err, False
+                        
+                except Exception as e_apply:
+                    err = f"Error while applying moves: {e_apply}. Moves were: {moves_result}"
+                    error_result_dict['error'] = err
+                    return error_result_dict, err, False
+                
+                # All checks passed
+                success = True
                 error_msg = None
-                if not success:
-                    errors = []
-                    if not success_l: errors.append(f"L mismatch: got {l_res}, expected {exp_l}")
-                    if not success_r: errors.append(f"R mismatch: got {r_res}, expected {exp_r}")
-                    if not success_x: errors.append(f"X mismatch: got {x_res}, expected {exp_x}")
-                    error_msg = "; ".join(errors)
                 # --- END OF NEW BLOCK ---
 
                 res_dict = {
@@ -508,15 +518,11 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
                     'success': success,
                     'time': elapsed,
                     'input': vector,
-                    'L_result': l_res,
-                    'expected_L': exp_l,
-                    'R_result': r_res,
-                    'expected_R': exp_r,
-                    'X_result': x_res,
-                    'expected_X': exp_x
+                    'moves_result': moves_result,
+                    'array_result': array_result,
+                    'expected_array': expected_sorted_list,
+                    'num_moves': len(moves_result)
                 }
-                if error_msg:
-                    res_dict['error'] = error_msg
                 return res_dict, error_msg, success
 
             except json.JSONDecodeError as je:
@@ -524,12 +530,8 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
                 error_result_dict['error'] = err
                 return error_result_dict, err, False
             except KeyError as ke: 
-                err = f'KeyError: {ke}. JSON output missing expected keys. Output was: {output}'
+                err = f'KeyError: {ke}. JSON output missing "moves" or "sorted_array". Output was: {output}'
                 error_result_dict['error'] = err
-                # Fill with what we managed to parse
-                error_result_dict['L_result'] = parsed.get('L_result')
-                error_result_dict['R_result'] = parsed.get('R_result')
-                error_result_dict['X_result'] = parsed.get('X_result')
                 return error_result_dict, err, False
 
         except subprocess.TimeoutExpired:
@@ -537,7 +539,7 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
             if child_process:
                 child_process.kill()
             error_result_dict['error'] = err
-            error_result_dict['time'] = exec_timeout # Time = timeout
+            error_result_dict['time'] = exec_timeout
             return error_result_dict, err, False
         finally:
             if child_process:
@@ -556,23 +558,28 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
     except (ImportError, Exception):
         start_mem = None
 
-    # --- UPDATED VECTORS for LRX ---
+    # --- UPDATED VECTORS for Sorting Task ---
+    # We use smaller N because sorting is N! complexity
     specific_vectors = [
         [],                      # n=0
         [1],                     # n=1
-        [1, 2],                  # n=2
-        [1, 2, 3],               # n=3
-        [3, 1, 2],
-        [5, 2, 4, 1, 3],
-        [48, 18, 44, 20, 16, 61, 26],
-        [1, 2, 3, 4], # Base vector from prompt
+        [1, 2],                  # n=2 (already sorted)
+        [2, 1],                  # n=2 (needs X)
+        [1, 2, 3],               # n=3 (already sorted)
+        [3, 1, 2],               # n=3
+        [2, 3, 1],               # n=3
+        [3, 2, 1],               # n=3 (reverse)
+        [4, 1, 3, 2],            # n=4
+        [1, 3, 2, 4],            # n=4
+        [5, 4, 3, 2, 1],         # n=5 (reverse)
+        [1, 5, 2, 4, 3],         # n=5
+        [6, 1, 2, 3, 4, 5]       # n=6 (testing timeout)
     ]
     # ---
-
-    # All vectors: specific + random for n=4 to 20
-    all_vectors = specific_vectors + [
-        [random.randint(0, n * 10) for _ in range(n)] for n in range(4, 21)
-    ]
+    
+    # We remove the random loop for n=4-20 as it's not feasible
+    # for a N! sorting problem test.
+    all_vectors = specific_vectors
 
     for vector in all_vectors:
         res_dict, err_msg, single_success = _run_single_test(vector, temp_file_path, exec_timeout)
@@ -586,12 +593,9 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
                 'n': res_dict['n'],
                 'input': res_dict['input'],
                 'error': res_dict.get('error', 'Unknown failure'),
-                'L_result': res_dict.get('L_result'),
-                'expected_L': res_dict.get('expected_L'),
-                'R_result': res_dict.get('R_result'),
-                'expected_R': res_dict.get('expected_R'),
-                'X_result': res_dict.get('X_result'),
-                'expected_X': res_dict.get('expected_X'),
+                'moves_result': res_dict.get('moves_result'),
+                'array_result': res_dict.get('array_result'),
+                'expected_array': res_dict.get('expected_array'),
             }
             # ---
             failing_cases.append(failing_case)
@@ -623,11 +627,12 @@ def test_code(code: str, config: Dict) -> Tuple[bool, str, Optional[Dict]]:
     if all_success:
         return True, 'All tests passed', summary
     else:
-        issue_str = json.dumps({'failing_cases': failing_cases}, ensure_ascii=False, indent=2)
+        # Only show the first failing case for brevity
+        issue_str = json.dumps({'failing_cases': failing_cases[:1]}, ensure_ascii=False, indent=2)
         return False, issue_str, summary
 
 # =============================================================================
-# === END OF UPDATED test_code() FUNCTION ===
+# === END OF REWRITTEN test_code() FUNCTION ===
 # =============================================================================
 
 
@@ -652,15 +657,11 @@ def llm_query(model: str, prompt: str, retries_config: Dict, config: Dict, progr
             if response and response.strip():
                 return response.strip()
         except ModelNotFoundError as e:
-            # IMPROVEMENT: Log if model not found
-            # *** FIX: Translated message ***
             progress_queue.put((model, 'log', f'Error: ModelNotFoundError: {e}'))
             if len(e.args) > 1:
                 local.current_data['tried'] = e.args[1]
             return None # Model not found, retry won't help
         except Exception as e:
-            # IMPROVEMENT: Log any other g4f error (e.g., rate limit)
-            # *** FIX: Translated message ***
             progress_queue.put((model, 'log', f'g4f Error (attempt {attempt+1}): {e}'))
             pass # Allow retry to work
         
@@ -672,7 +673,6 @@ def llm_query(model: str, prompt: str, retries_config: Dict, config: Dict, progr
 def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict:
     """
     Process one model: sequence of LLM queries, test, fix, refactor.
-    CORRECTION: Removed `task` argument, as it caused a KeyError.
     """
     iterations = []
     current_code = None
@@ -680,7 +680,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     early_stop = False
     
     # Count total number of stages for progress bar
-    # 1 (Initial) + 1 (Test/Fix) + 1 (Refactor1) + 1 (Test/Fix) + N*(Refactor + Test/Fix) + 1 (Final Test)
     num_loops = config['CONSTANTS']['NUM_REFACTOR_LOOPS']
     total_stages = 1 + 1 + 1 + 1 + (num_loops * 2) + 1
     current_stage_count = 0
@@ -688,19 +687,17 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     def update_progress(stage_name):
         nonlocal current_stage_count
         current_stage_count += 1
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'status', f'Stage: {stage_name} ({current_stage_count}/{total_stages})'))
         progress_queue.put((model, 'progress', (current_stage_count, total_stages)))
 
     def run_test(code_to_test, stage_name):
         """Internal function for testing and logging."""
         if not code_to_test or not code_to_test.strip():
-            # *** FIX: Translated message ***
             progress_queue.put((model, 'log', f'Test {stage_name}: Skipped (no code).'))
             return False, "No code to test", None
             
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'log', f'Test {stage_name}: Running test_code...'))
+        # NOTE: This now calls the NEW test_code() function
         success, issue, summary = test_code(code_to_test, config)
         if success:
             progress_queue.put((model, 'log', f'Test {stage_name}: SUCCESS. {issue}'))
@@ -710,8 +707,7 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
 
     def run_llm_query(prompt, stage_name, retries_key='FIX'):
         """Internal function for LLM query and logging."""
-        # *** FIX: Translated message ***
-        progress_queue.put((model, 'log', f'Stage: {stage_name}. Prompt:\n{prompt}'))
+        progress_queue.put((model, 'log', f'Stage: {stage_name}. Prompt:\n{prompt[:500]}...'))
         retries_cfg = config['RETRIES'][retries_key]
         progress_queue.put((model, 'log', f'Calling llm_query with retries: {retries_cfg}'))
         
@@ -722,12 +718,10 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
         
         if response:
             cleaned = clean_code(response)
-            # *** FIX: Translated message ***
-            progress_queue.put((model, 'log', f'Received response (length: {len(response)}), cleaned (length: {len(cleaned)}):\n{cleaned}'))
+            progress_queue.put((model, 'log', f'Received response (length: {len(response)}), cleaned (length: {len(cleaned)}):\n{cleaned[:500]}...'))
             return cleaned, None, tried, success_p
         else:
             error_msg = config['CONSTANTS']['ERROR_NO_RESPONSE']
-            # *** FIX: Translated message ***
             progress_queue.put((model, 'log', f'llm_query error: {error_msg}'))
             return None, error_msg, tried, success_p
 
@@ -745,21 +739,18 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     # ---
     # START OF PROCESS
     # ---
-    # *** FIX: Translated message ***
     progress_queue.put((model, 'log', f'=== STARTING MODEL PROCESSING: {model} ==='))
     
     # 1. Initial
     stage = config['STAGES']['INITIAL']
     update_progress(stage)
     
-    # CORRECTION: Remove .format(task=task) to avoid KeyError: 'n-1'
     prompt = config['PROMPTS']['INITIAL'] 
     
     current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
     add_iteration(stage, current_code, llm_error, None, tried, s_provider)
     
     if llm_error:
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'status', f'Error at stage: {stage}'))
         return {'model': model, 'iterations': iterations, 'final_code': None,
                 'final_test': {'success': False, 'summary': None, 'issue': 'No initial response'}}
@@ -780,7 +771,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
         add_iteration(stage, current_code, None, summary, [], None) 
 
     if early_stop:
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'status', f'Error at stage: {stage}'))
         return {'model': model, 'iterations': iterations, 'final_code': current_code,
                 'final_test': {'success': False, 'summary': summary, 'issue': f'LLM error during {stage}'}}
@@ -796,7 +786,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
 
     if llm_error:
         current_code = prev_code # Rollback if refactor failed
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'log', f'Error {stage}, rolling back to previous code version.'))
     
     # 4. Test & Fix (After Refactor 1)
@@ -814,7 +803,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
         add_iteration(stage, current_code, None, summary, [], None)
 
     if early_stop:
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'status', f'Error at stage: {stage}'))
         return {'model': model, 'iterations': iterations, 'final_code': current_code,
                 'final_test': {'success': False, 'summary': summary, 'issue': f'LLM error during {stage}'}}
@@ -822,7 +810,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     # 5. Refactor Loops (N times)
     for i in range(config['CONSTANTS']['NUM_REFACTOR_LOOPS']):
         if not current_code or not current_code.strip():
-            # *** FIX: Translated message ***
             progress_queue.put((model, 'log', f'Skipping refactor loop {i+1} (no code).'))
             update_progress(f'loop {i+1} refactor (skip)') # Skip 2 stages
             update_progress(f'loop {i+1} fix (skip)')
@@ -840,7 +827,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
 
         if llm_error:
             current_code = prev_code # Rollback
-            # *** FIX: Translated message ***
             progress_queue.put((model, 'log', f'Error {stage}, rolling back to previous code version.'))
         
         # 5b. Test & Fix
@@ -853,7 +839,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
             current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
             add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
             if llm_error:
-                # *** FIX: Translated message ***
                 progress_queue.put((model, 'status', f'Error at stage: {stage}, STOPPING LOOP'))
                 break # Break refactor loop if LLM couldn't fix
         else:
@@ -868,7 +853,6 @@ def process_model(model: str, config: Dict, progress_queue: queue.Queue) -> Dict
     add_iteration(stage, current_code, None if success else issue, summary, [], None)
 
     if success:
-        # *** FIX: Translated message ***
         progress_queue.put((model, 'log', f'FINAL: SUCCESS. {issue}'))
         progress_queue.put((model, 'status', 'Success (final test)'))
     else:
@@ -889,7 +873,6 @@ def save_results(results, folder, filename):
         try:
             os.makedirs(folder)
         except OSError as e:
-            # *** FIX: Translated message ***
             print(f"Error creating folder {folder}: {e}", file=sys.stderr)
             return
     path = os.path.join(folder, filename)
@@ -897,12 +880,10 @@ def save_results(results, folder, filename):
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        # *** FIX: Translated message ***
         print(f"Error saving file {path}: {e}", file=sys.stderr)
 
 def main():
     """Main function: load models, start threads, process results."""
-    # *** FIX: Translated message ***
     print("Loading model list...")
     try:
         models = get_models_list(CONFIG)
@@ -910,41 +891,34 @@ def main():
             print("No models found. Check URLS and g4f.models.", file=sys.stderr)
             return
         print(f"Found {len(models)} unique models for testing.")
-        # print(models) # Uncomment to see the list
     except Exception as e:
         print(f"Failed to load model list: {e}", file=sys.stderr)
         traceback.print_exc()
         return
 
-    # Ensure the results folder exists
     intermediate_folder = CONFIG['CONSTANTS']['INTERMEDIATE_FOLDER']
     if not os.path.exists(intermediate_folder):
         try:
             os.makedirs(intermediate_folder)
         except OSError as e:
-            # *** FIX: Translated message ***
             print(f"Failed to create folder {intermediate_folder}: {e}", file=sys.stderr)
             return
 
     progress_queue = queue.Queue()
     all_results = {}
     
-    # Limit number of models for example (set to -1 for all)
     MAX_MODELS_TO_TEST = -1 # -1 for all, 10 for quick test
     
     if MAX_MODELS_TO_TEST > 0:
         models_to_test = models[:MAX_MODELS_TO_TEST]
-        # *** FIX: Translated message ***
         print(f"--- STARTING TEST (Limited to {len(models_to_test)} models) ---")
     else:
         models_to_test = models
-        # *** FIX: Translated message ***
         print(f"--- STARTING TEST (All {len(models_to_test)} models) ---")
 
 
     try:
         with ThreadPoolExecutor(max_workers=CONFIG['CONSTANTS']['MAX_WORKERS']) as executor:
-            # CORRECTION: Remove `task_description` from call
             futures = {executor.submit(process_model, model, CONFIG, progress_queue): model for model in models_to_test}
             
             completed_count = 0
@@ -964,7 +938,6 @@ def main():
                         all_results[model] = result
                         
                         final_success = result.get('final_test', {}).get('success', False)
-                        # *** FIX: Translated message ***
                         status_str = "SUCCESS" if final_success else "FAILED"
 
                         # Save code if it exists
@@ -975,15 +948,11 @@ def main():
                                 with open(code_path, 'w', encoding='utf-8') as f:
                                     f.write(result['final_code'])
                             except Exception as e:
-                                # *** FIX: Translated message ***
                                 print(f"Error saving code for {model}: {e}", file=sys.stderr)
                                 
-                        # *** FIX: Translated message ***
                         print(f"--- ({completed_count}/{total_count}) COMPLETED: {model} [Status: {status_str}] ---")
                         
                     except Exception as e:
-                        # IMPROVEMENT: Print full traceback for CRITICAL ERROR
-                        # *** FIX: Translated message ***
                         print(f"--- ({completed_count+1}/{total_count}) CRITICAL ERROR (Executor): {model} ---")
                         tb_str = traceback.format_exc()
                         print(tb_str, file=sys.stderr) # Print full traceback
@@ -1009,12 +978,10 @@ def main():
                 time.sleep(0.2) # Short pause to avoid high CPU usage
 
     except KeyboardInterrupt:
-        # *** FIX: Translated message ***
         print("\nStopping at user request... (Waiting for current threads to finish)")
     finally:
         end_time_main = perf_counter()
         total_time_main = end_time_main - start_time_main
-        # *** FIX: Translated message ***
         print("--- TESTING FINISHED ---")
         print(f"Total execution time: {total_time_main:.2f} sec.")
         
