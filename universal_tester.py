@@ -939,82 +939,41 @@ def save_results(results, folder, filename):
 def validate_harness(test_code_func, task_constants, validation_code: str) -> bool:
     """
     Validates a generated harness against a known correct solution.
+    The validation_code string must contain the complete, correct implementation
+    for the task, including necessary imports and the main solving function.
     """
     print("--- Validating Generated Harness ---")
-    # Write the validation code to a temporary file
+    # Example input for validation (this should ideally come from the task prompt
+    # or be a standard test case known to work with the validation_code).
+    # For this example, we assume the validation_code handles sys.argv[1] or a default.
+    example_input = "[3, 1, 4, 1, 5]" # Example: Replace with relevant input for your task
+    # The validation_code itself is the 'correct' code to be tested by the harness.
+    # The harness will execute this string as a subprocess.
+    code_to_test = validation_code
+
     try:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
-            temp_file.write(validation_code)
-            temp_file_path = temp_file.name
+        # Call the generated test_code_func with the correct implementation string.
+        # The harness should run this code, execute its logic (e.g., solve_task),
+        # and verify the output against its internal ground truth or test cases.
+        success, message, summary = test_code_func(code_to_test, task_constants)
 
-        # Example input for validation (this should be task-specific)
-        example_input = "[3, 1, 4, 1, 5]" # Example: Replace with relevant input
-        # Example expected output based on validation_code
-        example_expected_output = "[1, 1, 3, 4, 5]" # Example: Replace with expected output
-
-        # Attempt to run the validation code as a subprocess to get its output
-        try:
-            proc_result = subprocess.run(
-                [sys.executable, temp_file_path, example_input],
-                capture_output=True,
-                text=True,
-                timeout=task_constants.get('EXEC_TIMEOUT', 10)
-            )
-            if proc_result.returncode != 0:
-                 print(f"Validation code failed to run: {proc_result.stderr}")
-                 return False
-            # Assuming the validation code prints its result as JSON
-            try:
-                val_output = json.loads(proc_result.stdout.strip())
-            except json.JSONDecodeError:
-                 print(f"Validation code did not output valid JSON: {proc_result.stdout}")
-                 return False
-
-        except subprocess.TimeoutExpired:
-             print(f"Validation code timed out.")
-             return False
-        finally:
-            os.unlink(temp_file_path) # Clean up the temporary file
-
-        # Now run the *test harness* against the validation code's output
-        # We need to simulate the 'code' argument to test_code_func as the validation code itself
-        # This is complex. A simpler approach might be to test if the harness can correctly
-        # evaluate a *known good* output string against the example input.
-        # Let's try testing the harness function directly with example data
-        # assuming the harness can handle raw inputs/outputs if needed for validation.
-
-        # A more direct validation: run the harness against the validation code string
-        # This checks if the harness can handle a code that *should* work.
-        # The harness might run the code and compare its output to expected results.
-        # This requires the harness to be designed to accept the validation code.
-        # Let's assume the harness can run the validation code string and pass.
-        # Create a simple code string that matches the expected input/output structure.
-        simple_correct_code_str = f"""
-import json
-import sys
-if len(sys.argv) > 1:
-    input_data = json.loads(sys.argv[1])
-else:
-    input_data = {example_input} # Default example
-
-# Correct logic based on example
-result = solve_task(input_data)
-
-# Print the result as JSON
-print(json.dumps(result))
-"""
-
-        success, message, summary = test_code_func(simple_correct_code_str, task_constants)
         if success:
             print("--- Harness Validation SUCCESS ---")
+            print(f"      Message: {message}")
+            # Optional: Check summary for specific details if needed
+            # if summary and summary.get('all_tests_passed', False):
             return True
         else:
             print(f"--- Harness Validation FAILED: {message} ---")
+            # Optional: Print summary for debugging
+            if summary:
+                 print(f"      Summary: {summary}")
             return False
 
     except Exception as e:
         print(f"--- Harness Validation CRITICAL ERROR: {e} ---")
         traceback.print_exc()
+        # If the harness itself crashes, it's definitely invalid.
         return False
 
 def generate_multiple_harnesses(initial_prompt: str, engine_config: Dict, progress_queue: queue.Queue) -> List[Dict]:
@@ -1028,7 +987,7 @@ def generate_multiple_harnesses(initial_prompt: str, engine_config: Dict, progre
     validation_code = engine_config['CONSTANTS'].get('HARNESS_VALIDATION_CODE', "")
     if not validation_code:
         print("Warning: HARNESS_VALIDATION_CODE not provided. Skipping validation step.", file=sys.stderr)
-        # Proceed with generation but warn about lack of validation
+        print("         This means potentially flawed harnesses might be used.", file=sys.stderr)
 
     for i, model in enumerate(harness_models):
         model_name_str = model.name if isinstance(model, g4f.models.Model) else str(model)
@@ -1036,12 +995,31 @@ def generate_multiple_harnesses(initial_prompt: str, engine_config: Dict, progre
 
         task_config = generate_task_harness(initial_prompt, model, engine_config, progress_queue)
         if task_config:
+            # Mark the source model for potential logging later
+            task_config['source_model'] = model_name_str
+
             if validation_code: # Only validate if a validation code is provided
                 if validate_harness(task_config['test_code_func'], task_config['TASK_CONSTANTS'], validation_code):
                     validated_harnesses.append(task_config)
                     print(f"--- Harness from {model_name_str} is VALIDATED ---")
                 else:
                     print(f"--- Harness from {model_name_str} FAILED validation and is discarded. ---")
+                    # Optionally, save the failed harness for debugging
+                    # failed_harness_path = os.path.join(
+                    #     engine_config['CONSTANTS']['INTERMEDIATE_FOLDER'],
+                    #     f"failed_harness_{model_name_str.replace('/', '_')}.py"
+                    # )
+                    # try:
+                    #     import inspect
+                    #     harness_code = inspect.getsource(task_config['test_code_func'])
+                    #     constants_code = f"TASK_CONSTANTS = {json.dumps(task_config['TASK_CONSTANTS'], indent=4)}\n"
+                    #     with open(failed_harness_path, 'w', encoding='utf-8') as f:
+                    #         f.write(f"# Failed harness from {model_name_str}\n")
+                    #         f.write(constants_code)
+                    #         f.write(harness_code)
+                    #     print(f"      Saved failed harness for inspection to: {failed_harness_path}")
+                    # except Exception as e_inspect:
+                    #     print(f"      Could not save failed harness: {e_inspect}", file=sys.stderr)
             else: # If no validation code, add the harness anyway (less robust)
                  validated_harnesses.append(task_config)
                  print(f"--- Harness from {model_name_str} added without validation. ---")
