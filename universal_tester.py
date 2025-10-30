@@ -358,12 +358,12 @@ ENGINE_CONFIG = {
         # --- NEW: List of models to try for harness generation ---
         # It will test these in order and use the first one that works.
         'HARNESS_GENERATOR_MODELS': [
-            'deepseek-v3',                 # User's requested model
-            'deepseek-r1',
-            'gpt-4',                 # A strong, reliable choice
-            g4f.models.gemini_pro,         # A good fallback
-            g4f.models.claude_3_haiku,     # Another strong option
-            g4f.models.claude_3_sonnet
+            #'deepseek-v3',                 # User's requested model
+            #'deepseek-r1',
+            #'gpt-4',                 # A strong, reliable choice
+            g4f.models.deepseek_v3,         # A good fallback
+            g4f.models.deepseek_r1,     # Another strong option
+            g4f.models.gpt_4
         ]
     },
     'STAGES': {
