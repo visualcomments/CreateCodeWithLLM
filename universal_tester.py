@@ -359,7 +359,8 @@ ENGINE_CONFIG = {
         # It will test these in order and use the first one that works.
         'HARNESS_GENERATOR_MODELS': [
             'deepseek-v3',                 # User's requested model
-            'gpt-4o-mini',                 # A strong, reliable choice
+            'deepseek-r1',
+            'gpt-4',                 # A strong, reliable choice
             g4f.models.gemini_pro,         # A good fallback
             g4f.models.claude_3_haiku,     # Another strong option
             g4f.models.claude_3_sonnet
