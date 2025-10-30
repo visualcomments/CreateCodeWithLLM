@@ -198,8 +198,6 @@ try:
 except AttributeError:
      print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
 
-# *** FIX: REMOVED DUPLICATE CODE BLOCK THAT WAS HERE ***
-# (The block from line 201-285 in the original file was a copy of 68-152)
 
 # =============================================================================
 # === ENGINE CONFIGURATION ===
@@ -207,7 +205,6 @@ except AttributeError:
 
 ENGINE_CONFIG = {
     'URLS': {
-        # *** FIX: Removed markdown wrapper from URL ***
         'WORKING_RESULTS': '[https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt](https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt)'
     },
     'RETRIES': {
@@ -233,15 +230,8 @@ ENGINE_CONFIG = {
         'NUM_REFACTOR_LOOPS': 3,
         'INTERMEDIATE_FOLDER': 'results',
         
-        # --- NEW: List of models to try for harness generation ---
-        # It will test these in order and use the first one that works.
         'HARNESS_GENERATOR_MODELS': [
-            #'deepseek-v3',                 # User's requested model
-            #'deepseek-r1',
-            #'gpt-4',                 # A strong, reliable choice
-            g4f.models.gpt_4,         # A good fallback
-            #g4f.models.deepseek_r1,     # Another strong option
-            #g4f.models.gpt_4
+            g4f.models.gpt_4,
         ]
     },
     'STAGES': {
@@ -456,7 +446,8 @@ def llm_query(model: Any, prompt: str, retries_config: Dict, config: Dict, progr
             
         
         if attempt < retries_config['max_retries']:
-            time.sleep(retRIES['backoff_factor'] * (2 ** attempt))
+            # *** CRITICAL FIX: Changed 'retRIES' to 'retries_config' ***
+            time.sleep(retries_config['backoff_factor'] * (2 ** attempt))
 
     return None
 
@@ -574,7 +565,6 @@ def generate_task_harness(initial_prompt: str, harness_model: Any, engine_config
 
     print("--- Task Harness Generation SUCCESS ---")
     
-    # *** FIX: Return the generated source code for saving ***
     return {
         "test_code_func": context['test_code'],
         "TASK_CONSTANTS": context['TASK_CONSTANTS'],
@@ -682,7 +672,6 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
     update_progress(stage)
     success, issue, summary = run_test(current_code, stage)
     if not success:
-        # *** FIX: Escape issue to prevent KeyError ***
         issue_escaped = str(issue).replace('{', '{{').replace('}', '}}')
         prompt = prompts['FIX'].format(code=current_code, error=issue_escaped)
         
@@ -713,7 +702,6 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
     update_progress(stage)
     success, issue, summary = run_test(current_code, stage)
     if not success:
-        # *** FIX: Escape issue to prevent KeyError ***
         issue_escaped = str(issue).replace('{', '{{').replace('}', '}}')
         prompt = prompts['FIX'].format(code=current_code, error=issue_escaped)
         
@@ -752,7 +740,6 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
         update_progress(stage)
         success, issue, summary = run_test(current_code, stage)
         if not success:
-            # *** FIX: Escape issue to prevent KeyError ***
             issue_escaped = str(issue).replace('{', '{{').replace('}', '}}')
             prompt = prompts['FIX'].format(code=current_code, error=issue_escaped)
             
@@ -848,18 +835,16 @@ def main():
             print(f"LOG: {progress_queue.get_nowait()}", file=sys.stderr)
         sys.exit(1)
     
-    # *** FIX: Save the generated test harness using the returned source code ***
+    # Save the generated test harness for inspection
     try:
         generated_harness_path = os.path.join(
             ENGINE_CONFIG['CONSTANTS']['INTERMEDIATE_FOLDER'], 
             "__generated_test_harness.py"
         )
         
-        # Use the 'generated_source_code' returned from the function
         if 'generated_source_code' in task_config:
             harness_code = task_config['generated_source_code']
             
-            # Ensure the folder exists
             save_results({}, ENGINE_CONFIG['CONSTANTS']['INTERMEDIATE_FOLDER'], "dummy_init_folder.json") 
             
             with open(generated_harness_path, 'w', encoding='utf-8') as f:
@@ -903,6 +888,8 @@ def main():
         except OSError as e:
             print(f"Failed to create folder {intermediate_folder}: {e}", file=sys.stderr)
             return
+            
+    CONSTANTS = ENGINE_CONFIG['CONSTANTS'] # For use in main loop
 
     all_results = {}
     MAX_MODELS_TO_TEST = -1 # -1 for all
@@ -916,7 +903,8 @@ def main():
 
 
     try:
-        with ThreadPoolExecutor(max_workers=ENGINE_CONFIG['CONSTANTS']['MAX_WORKERS']) as executor:
+        with ThreadPoolExecutor(max_workers=CONSTANTS['MAX_WORKERS']) as executor:
+            # *** IMPROVEMENT: Use a dictionary for {future: model_name} mapping ***
             futures = {
                 executor.submit(process_model, model, task_config, prompts, ENGINE_CONFIG, progress_queue): model 
                 for model in models_to_test
@@ -926,60 +914,50 @@ def main():
             total_count = len(futures)
             start_time_main = perf_counter()
 
-            while completed_count < total_count:
-                # Use as_completed to process futures as they finish
-                # This is more efficient than polling f.done() in a loop
-                done_futures = []
-                for f in futures:
-                    if f.done():
-                        done_futures.append(f)
+            # *** IMPROVEMENT: Use as_completed for event-driven processing ***
+            for future in as_completed(futures):
+                model = futures[future] # Get model name from the dictionary
+                completed_count += 1
                 
-                if not done_futures:
-                    # If no futures are done, check the queue and sleep
-                    try:
-                        while not progress_queue.empty():
-                            model, type, message = progress_queue.get_nowait()
-                            # (Uncomment for detailed logs)
-                            # if type == 'log':
-                            #     print(f"LOG [{model}]: {message}")
-                            # elif type == 'status':
-                            #     print(f"STATUS [{model}]: {message}")
-                    except queue.Empty:
-                        pass
+                try:
+                    result = future.result()
+                    all_results[model] = result
                     
-                    time.sleep(0.2)
-                    continue
+                    final_success = result.get('final_test', {}).get('success', False)
+                    status_str = "SUCCESS" if final_success else "FAILED"
 
-                # Process the futures that are done
-                for future in done_futures:
-                    model = futures.pop(future) # Remove from dict
-                    completed_count += 1
-                    try:
-                        result = future.result()
-                        all_results[model] = result
-                        
-                        final_success = result.get('final_test', {}).get('success', False)
-                        status_str = "SUCCESS" if final_success else "FAILED"
-
-                        if result.get('final_code'):
-                            code_filename = f"{model.replace('/', '_')}_final.py"
-                            code_path = os.path.join(intermediate_folder, code_filename)
-                            try:
-                                with open(code_path, 'w', encoding='utf-8') as f:
-                                    f.write(result['final_code'])
-                            except Exception as e:
-                                print(f"Error saving code for {model}: {e}", file=sys.stderr)
-                                
-                        print(f"--- ({completed_count}/{total_count}) COMPLETED: {model} [Status: {status_str}] ---")
-                        
-                    except Exception as e:
-                        print(f"--- ({completed_count}/{total_count}) CRITICAL ERROR (Executor): {model} ---")
-                        tb_str = traceback.format_exc()
-                        print(tb_str, file=sys.stderr)
-                        all_results[model] = {'error': str(e), 'traceback': tb_str, 'iterations': [], 'final_code': None, 'final_test': {'success': False, 'summary': None, 'issue': str(e)}}
+                    if result.get('final_code'):
+                        code_filename = f"{model.replace('/', '_')}_final.py"
+                        code_path = os.path.join(intermediate_folder, code_filename)
+                        try:
+                            with open(code_path, 'w', encoding='utf-8') as f:
+                                f.write(result['final_code'])
+                        except Exception as e:
+                            print(f"Error saving code for {model}: {e}", file=sys.stderr)
+                            
+                    print(f"--- ({completed_count}/{total_count}) COMPLETED: {model} [Status: {status_str}] ---")
                     
-                    if completed_count % ENGINE_CONFIG['CONSTANTS']['N_SAVE'] == 0 or completed_count == total_count:
-                        save_results(all_results, intermediate_folder, f"intermediate_results_{completed_count}.json")
+                except Exception as e:
+                    print(f"--- ({completed_count}/{total_count}) CRITICAL ERROR (Executor): {model} ---")
+                    tb_str = traceback.format_exc()
+                    print(tb_str, file=sys.stderr)
+                    all_results[model] = {'error': str(e), 'traceback': tb_str, 'iterations': [], 'final_code': None, 'final_test': {'success': False, 'summary': None, 'issue': str(e)}}
+                
+                # --- Process queue after handling the future ---
+                try:
+                    while not progress_queue.empty():
+                        q_model, q_type, q_message = progress_queue.get_nowait()
+                        # (Uncomment for detailed logs)
+                        # if q_type == 'log':
+                        #     print(f"LOG [{q_model}]: {q_message}")
+                        # elif q_type == 'status':
+                        #     print(f"STATUS [{q_model}]: {q_message}")
+                except queue.Empty:
+                    pass
+                
+                # --- Save intermediate results periodically ---
+                if completed_count % CONSTANTS['N_SAVE'] == 0 or completed_count == total_count:
+                    save_results(all_results, intermediate_folder, f"intermediate_results_{completed_count}.json")
 
     except KeyboardInterrupt:
         print("\nStopping at user request... (Waiting for current threads to finish)")
