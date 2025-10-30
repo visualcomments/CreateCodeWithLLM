@@ -356,9 +356,17 @@ ENGINE_CONFIG = {
         'INTERMEDIATE_FOLDER': 'results',
         'HARNESS_GENERATOR_MODELS': [ # List of models to try for harness generation
             g4f.models.gpt_4,
-            g4f.models.llama_4_scout, # Example: Add if available via g4f
-            g4f.models.deepseek_v3,     # Example: Add if available via g4f
-            g4f.models.gpt_4o_mini,  # Example: Add more potentially reliable models
+            g4f.models.llama_3_2_11b,
+            g4f.models.qwen_2_vl_7b,
+            g4f.models.deepseek_r1,
+            g4f.models.janus_pro_7b,
+            g4f.models.command_r,
+            g4f.models.command_r_plus,
+            g4f.models.command_r7b,
+            g4f.models.qwen_2_5_coder_32b,
+            g4f.models.qwq_32b,
+            g4f.models.llama_3_3_70b,
+
         ],
         'HARNESS_VALIDATION_CODE': """ # Example: A simple, correct solution for validation
     def solve_task(input_data):
