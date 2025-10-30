@@ -361,7 +361,7 @@ ENGINE_CONFIG = {
             #'deepseek-v3',                 # User's requested model
             #'deepseek-r1',
             #'gpt-4',                 # A strong, reliable choice
-            g4f.models.gpt_4,         # A good fallback
+            g4f.models.gpt_4o,         # A good fallback
             #g4f.models.deepseek_r1,     # Another strong option
             #g4f.models.gpt_4
         ]
