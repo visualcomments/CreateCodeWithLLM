@@ -13,9 +13,180 @@ import psutil
 from time import perf_counter
 import re
 import tempfile
-import traceback
+import traceback 
 
 # Patch for RotatedProvider (used in AnyProvider for rotation)
+try:
+    import g4f.providers.retry_provider as retry_mod  # Import module
+    OriginalRotatedProvider = retry_mod.RotatedProvider  # Alias original for inheritance
+except ImportError:
+    print("Failed to import g4f.providers.retry_provider. Using fallback.", file=sys.stderr)
+    # Fallback if g4f is not installed or structure changed
+    class OriginalRotatedProvider:
+        pass
+
+import g4f
+from g4f import Provider
+
+import threading
+local = threading.local()
+
+from g4f.errors import ModelNotFoundError
+import queue
+
+def clean_code(code: str) -> str:
+    """
+    Cleans code from markdown wrappers like ```python ... ``` and JSON metadata (OpenAI-like).
+    First, checks for JSON, extracts content from choices[0].message.content if possible.
+    If JSON doesn't parse, looks for a markdown block in the string and extracts its content.
+    Then removes lines with ```python, ``` and extra empty lines.
+    """
+    original_len = len(code)
+    
+    # Step 1: Check for JSON wrapper (OpenAI-style)
+    content_from_json = None
+    try:
+        data = json.loads(code)
+        if isinstance(data, dict) and 'choices' in data and len(data['choices']) > 0:
+            content = data['choices'][0].get('message', {}).get('content', '')
+            if isinstance(content, str):
+                content_from_json = content
+                code = content  # Replace with content for further cleaning
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+        pass  # Not JSON — continue
+
+    # Step 2: If JSON didn't work or content_from_json is empty, search for markdown block in original
+    # Find first block ```python\n... (up to next ``` or end)
+    
+    # === FIX 1 (Was: match = re.search(r'...) ===
+    match = re.search(r'```(?:python\n)?(.*?)\n```', code, re.DOTALL | re.MULTILINE)
+
+    if match:
+        code = match.group(1)
+    # Alternative: if block without closing ```, search from first ``` to end
+    else:
+        # === FIX 2 (Was: match = re.search(r'...) ===
+        match = re.search(r'```(?:python\n)?(.*?)$', code, re.DOTALL | re.MULTILINE)
+
+        if match:
+            code = match.group(1)
+
+    # Step 3: Final regex cleanup (for nested markdown)
+    # Remove ```python block at start
+    # === FIX 3 (Was: code = re.sub(r'^...) ===
+    code = re.sub(r'^```(?:python\n)?', '', code, flags=re.MULTILINE)
+
+    # Remove ``` block at end
+    code = re.sub(r'\n?```\s*$', '', code, flags=re.MULTILINE)
+    # Remove extra newlines at start and end
+    code = re.sub(r'^\n+', '', code, flags=re.MULTILINE)
+    code = re.sub(r'\n+$', '\n', code, flags=re.MULTILINE)
+    
+    cleaned = code.strip()
+    
+    return cleaned
+
+# Custom Rotated with tracking (patching create_async_generator, logs in loop)
+class TrackedRotated(OriginalRotatedProvider):
+    async def create_async_generator(self, model, messages, **kwargs):
+        if not hasattr(local, 'current_data') or local.current_data is None:
+            local.current_data = {'tried': [], 'errors': {}, 'success': None, 'model': model}
+        current_data = local.current_data
+        current_data['tried'] = []
+        current_data['errors'] = {}
+        current_data['success'] = None
+        current_data['model'] = model
+        if hasattr(local, 'current_model') and hasattr(local, 'current_queue') and self.providers:
+            local.current_queue.put((local.current_model, 'log', f'1) Found providers: {[p.__name__ for p in self.providers]}'))
+            local.current_queue.put((local.current_model, 'log', f'Debug: TrackedRotated called for model {model}'))
+        
+        # Check if self.providers is empty (can happen with g4f errors)
+        if not self.providers:
+             raise ModelNotFoundError(f"No providers found for model {model}", [])
+
+        for provider_class in self.providers:
+            p = None
+            # Safely get provider name BEFORE try (for str/classes)
+            if isinstance(provider_class, str):
+                provider_name = provider_class
+            else:
+                provider_name = provider_class.__name__ if hasattr(provider_class, '__name__') else str(provider_class)
+            current_data['tried'].append(provider_name)
+            if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
+                local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_name} with model: {model}'))
+            try:
+                # If str, convert to class for instantiation
+                if isinstance(provider_class, str):
+                    if hasattr(Provider, provider_class):
+                        provider_class = getattr(Provider, provider_class)
+                    else:
+                        raise ValueError(f"Provider '{provider_name}' not found in Provider")
+                p = provider_class()
+                async for chunk in p.create_async_generator(model, messages, **kwargs):
+                    yield chunk
+                # Success: put log
+                if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
+                    local.current_queue.put((local.current_model, 'log', f'3) Success from {provider_name}'))
+                    current_data['success'] = provider_name
+                return
+            except Exception as e:
+                error_str = str(e)
+                if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
+                    error_msg = f'3) Error {provider_name}: {error_str}'
+                    local.current_queue.put((local.current_model, 'log', error_msg))
+                current_data['errors'][provider_name] = error_str
+                if p:
+                    if hasattr(p, '__del__'):
+                        p.__del__()
+                continue
+        # No success: final log
+        try:
+            if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
+                local.current_queue.put((local.current_model, 'log', f'Debug: TrackedRotated finished, tried_providers={current_data["tried"]}'))
+        except Exception:
+            pass
+        raise ModelNotFoundError(f"No working provider for model {model}", current_data['tried'])
+
+# Monkey-patch: replace RotatedProvider with TrackedRotated (used by AnyProvider)
+try:
+    retry_mod.RotatedProvider = TrackedRotated
+except NameError:
+    print("Failed to apply Monkey-patch for RotatedProvider (retry_mod not defined)", file=sys.stderr)
+
+
+# Patch g4f.debug to write to queue (no console, with JSON if needed)
+try:
+    original_log = g4f.debug.log
+    original_error = g4f.debug.error
+
+    def patched_log(message, *args, **kwargs):
+        message_str = str(message) if not isinstance(message, str) else message
+        if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
+            if 'AnyProvider: Using providers:' in message_str:
+                providers_str = message_str.split('providers: ')[1].split(" for model")[0].strip("'")
+                local.current_queue.put((local.current_model, 'log', f'1) Found providers: [{providers_str}]'))
+            elif 'Attempting provider:' in message_str:
+                provider_str = message_str.split('provider: ')[1].strip()
+                local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_str}'))
+
+
+    def patched_error(message, *args, **kwargs):
+        message_str = str(message) if not isinstance(message, str) else message
+        if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
+            if 'failed:' in message_str:
+                fail_str = message_str.split('failed: ')[1].strip()
+                local.current_queue.put((local.current_model, 'log', f'3) Error {fail_str}'))
+            elif 'success' in message_str.lower():
+                success_str = message_str.split('success: ')[1].strip() if 'success: ' in message_str else 'success'
+                local.current_queue.put((local.current_model, 'log', f'3) Success {success_str}'))
+
+    g4f.debug.log = patched_log
+    g4f.debug.error = patched_error
+
+except AttributeError:
+     print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
+
+
 try:
     import g4f.providers.retry_provider as retry_mod
     OriginalRotatedProvider = retry_mod.RotatedProvider
@@ -33,14 +204,9 @@ import queue
 
 def clean_code(code: str) -> str:
     """
-    Cleans code from markdown wrappers like ```python
+    Cleans code from markdown wrappers like ```python ... ``` and JSON metadata.
     """
-    if not code:
-        return ""
-        
     original_len = len(code)
-
-    # Step 1: Check for JSON wrapper (OpenAI-style)
     content_from_json = None
     try:
         data = json.loads(code)
@@ -52,23 +218,18 @@ def clean_code(code: str) -> str:
     except (json.JSONDecodeError, KeyError, IndexError, TypeError):
         pass
 
-    # Step 2: Search for markdown code blocks
-    match = re.search(r'```(?:python)?\n(.*?)\n```', code, re.DOTALL)
+    match = re.search(r'```(?:python\n)?(.*?)\n```', code, re.DOTALL | re.MULTILINE)
     if match:
         code = match.group(1)
     else:
-        match = re.search(r'```(.*?)```', code, re.DOTALL)
+        match = re.search(r'```(?:python\n)?(.*?)$', code, re.DOTALL | re.MULTILINE)
         if match:
             code = match.group(1)
 
-    # Step 3: Remove ```python markers
-    code = re.sub(r'^```python\s*', '', code, flags=re.MULTILINE)
-    code = re.sub(r'\s*```$', '', code, flags=re.MULTILINE)
-    
-    # Remove extra newlines at start and end
+    code = re.sub(r'^```(?:python\n)?', '', code, flags=re.MULTILINE)
+    code = re.sub(r'\n?```\s*$', '', code, flags=re.MULTILINE)
     code = re.sub(r'^\n+', '', code, flags=re.MULTILINE)
     code = re.sub(r'\n+$', '\n', code, flags=re.MULTILINE)
-
     cleaned = code.strip()
     return cleaned
 
@@ -84,25 +245,22 @@ class TrackedRotated(OriginalRotatedProvider):
         current_data['errors'] = {}
         current_data['success'] = None
         current_data['model'] = model
-        
         if hasattr(local, 'current_model') and hasattr(local, 'current_queue') and self.providers:
-            local.current_queue.put((local.current_model, 'log', f'1) Found providers: {[p.__name__ if hasattr(p, "__name__") else str(p) for p in self.providers]}'))
+            local.current_queue.put((local.current_model, 'log', f'1) Found providers: {[p.__name__ for p in self.providers]}'))
             local.current_queue.put((local.current_model, 'log', f'Debug: TrackedRotated called for model {model}'))
-
+        
         if not self.providers:
-            raise ModelNotFoundError(f"No providers found for model {model}", [])
+             raise ModelNotFoundError(f"No providers found for model {model}", [])
 
         for provider_class in self.providers:
             p = None
             if isinstance(provider_class, str):
                 provider_name = provider_class
             else:
-                provider_name = provider_class.__name__ if hasattr(provider_class, "__name__") else str(provider_class)
-                
+                provider_name = provider_class.__name__ if hasattr(provider_class, '__name__') else str(provider_class)
             current_data['tried'].append(provider_name)
             if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
                 local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_name} with model: {model}'))
-                
             try:
                 if isinstance(provider_class, str):
                     if hasattr(Provider, provider_class):
@@ -112,95 +270,73 @@ class TrackedRotated(OriginalRotatedProvider):
                 p = provider_class()
                 async for chunk in p.create_async_generator(model, messages, **kwargs):
                     yield chunk
-                    
                 if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
                     local.current_queue.put((local.current_model, 'log', f'3) Success from {provider_name}'))
                     current_data['success'] = provider_name
                 return
-                
             except Exception as e:
                 error_str = str(e)
                 if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
                     error_msg = f'3) Error {provider_name}: {error_str}'
                     local.current_queue.put((local.current_model, 'log', error_msg))
                 current_data['errors'][provider_name] = error_str
-                if p and hasattr(p, '__del__'):
-                    try:
+                if p:
+                    if hasattr(p, '__del__'):
                         p.__del__()
-                    except:
-                        pass
                 continue
-
         try:
             if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
                 local.current_queue.put((local.current_model, 'log', f'Debug: TrackedRotated finished, tried_providers={current_data["tried"]}'))
         except Exception:
             pass
-            
         raise ModelNotFoundError(f"No working provider for model {model}", current_data['tried'])
 
-# Monkey-patch: replace RotatedProvider with TrackedRotated
 try:
     retry_mod.RotatedProvider = TrackedRotated
 except NameError:
     print("Failed to apply Monkey-patch for RotatedProvider (retry_mod not defined)", file=sys.stderr)
 
-# Patch g4f.debug to write to queue
 try:
     original_log = g4f.debug.log
     original_error = g4f.debug.error
-
     def patched_log(message, *args, **kwargs):
         message_str = str(message) if not isinstance(message, str) else message
         if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
             if 'AnyProvider: Using providers:' in message_str:
-                try:
-                    providers_str = message_str.split('providers: ')[1].split(" for model")[0].strip("'")
-                    local.current_queue.put((local.current_model, 'log', f'1) Found providers: [{providers_str}]'))
-                except:
-                    pass
+                providers_str = message_str.split('providers: ')[1].split(" for model")[0].strip("'")
+                local.current_queue.put((local.current_model, 'log', f'1) Found providers: [{providers_str}]'))
             elif 'Attempting provider:' in message_str:
-                try:
-                    provider_str = message_str.split('provider: ')[1].strip()
-                    local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_str}'))
-                except:
-                    pass
-
+                provider_str = message_str.split('provider: ')[1].strip()
+                local.current_queue.put((local.current_model, 'log', f'2) Trying {provider_str}'))
     def patched_error(message, *args, **kwargs):
         message_str = str(message) if not isinstance(message, str) else message
         if hasattr(local, 'current_model') and hasattr(local, 'current_queue'):
             if 'failed:' in message_str:
-                try:
-                    fail_str = message_str.split('failed: ')[1].strip()
-                    local.current_queue.put((local.current_model, 'log', f'3) Error {fail_str}'))
-                except:
-                    pass
+                fail_str = message_str.split('failed: ')[1].strip()
+                local.current_queue.put((local.current_model, 'log', f'3) Error {fail_str}'))
             elif 'success' in message_str.lower():
-                try:
-                    success_str = message_str.split('success: ')[1].strip() if 'success: ' in message_str else 'success'
-                    local.current_queue.put((local.current_model, 'log', f'3) Success {success_str}'))
-                except:
-                    pass
-
+                success_str = message_str.split('success: ')[1].strip() if 'success: ' in message_str else 'success'
+                local.current_queue.put((local.current_model, 'log', f'3) Success {success_str}'))
     g4f.debug.log = patched_log
     g4f.debug.error = patched_error
-
 except AttributeError:
-    print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
+     print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
+# ... [End of Patches] ...
+
 
 # =============================================================================
-# ENGINE CONFIGURATION
+# === ENGINE CONFIGURATION ===
 # =============================================================================
 
 ENGINE_CONFIG = {
     'URLS': {
-        'WORKING_RESULTS': 'https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt'
+        'WORKING_RESULTS': '[https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt](https://raw.githubusercontent.com/maruf009sultan/g4f-working/refs/heads/main/working/working_results.txt)'
     },
     'RETRIES': {
         'INITIAL': {'max_retries': 1, 'backoff_factor': 1.0},
         'FIX': {'max_retries': 3, 'backoff_factor': 2.0},
-        'HARNESS_GEN': {'max_retries': 3, 'backoff_factor': 2.0},
-        'HARNESS_TEST': {'max_retries': 1, 'backoff_factor': 1.0}
+        'HARNESS_GEN': {'max_retries': 3, 'backoff_factor': 2.0}, # For the test generator
+        'HARNESS_TEST': {'max_retries': 1, 'backoff_factor': 1.0}  # For testing the generator models
     },
     'CUSTOM_MODELS': {
         'HF_MODELS': [
@@ -218,10 +354,20 @@ ENGINE_CONFIG = {
         'ERROR_NO_RESPONSE': 'No response from model',
         'NUM_REFACTOR_LOOPS': 3,
         'INTERMEDIATE_FOLDER': 'results',
-        'HARNESS_GENERATOR_MODELS': [
-            'gpt-4',
-            'gpt-3.5-turbo',
-        ]
+        'HARNESS_GENERATOR_MODELS': [ # List of models to try for harness generation
+            g4f.models.gpt_4,
+            g4f.models.llama_4_scout, # Example: Add if available via g4f
+            g4f.models.deepseek_v3,     # Example: Add if available via g4f
+            g4f.models.gpt_4o_mini,  # Example: Add more potentially reliable models
+        ],
+        'HARNESS_VALIDATION_CODE': """ # Example: A simple, correct solution for validation
+    def solve_task(input_data):
+        # Example placeholder: Replace with actual correct logic for the specific task
+        # This is just a conceptual example.
+        if isinstance(input_data, list) and all(isinstance(x, int) for x in input_data):
+            return sorted(input_data) # Example: sorting task
+        return input_data
+    """ # This needs to be task-specific or provided by the user
     },
     'STAGES': {
         'INITIAL': 'initial_response',
@@ -234,66 +380,89 @@ ENGINE_CONFIG = {
 }
 
 # =============================================================================
-# PROMPT TEMPLATES
+# === PROMPT TEMPLATES ===
 # =============================================================================
 
+# Meta-prompt to generate the test_code function
 META_PROMPT_TEMPLATE = r"""
 You are an expert Test Driven Development (TDD) engineer. Your task is to generate a Python script containing a test harness for a given algorithmic task description.
 
 The generated script MUST contain:
-A dictionary named TASK_CONSTANTS. It must include EXEC_TIMEOUT (in seconds, estimate a reasonable value based on the task description, e.g., 10s for simple poly-time, 30s+ for search/BFS on small inputs) and ERROR_TIMEOUT (a string message).
-A function test_code(code: str, task_config: Dict) -> Tuple[bool, str, Optional[Dict]]. This function MUST be self-contained except for standard libraries (json, sys, subprocess, tempfile, os, psutil, traceback, time, typing, random, queue, collections).
+1.  A dictionary named `TASK_CONSTANTS`. It must include `EXEC_TIMEOUT` (in seconds, estimate a reasonable value based on the task description, e.g., 10s for simple poly-time, 30s+ for search/BFS on small inputs) and `ERROR_TIMEOUT` (a string message).
+2.  A function `test_code(code: str, task_config: Dict) -> Tuple[bool, str, Optional[Dict]]`. This function MUST be self-contained *except* for standard libraries (json, sys, subprocess, tempfile, os, psutil, traceback, time, typing, random, queue, collections).
 
-The test_code function must:
-Accept the Python code as a string and task_config (which will be the TASK_CONSTANTS dict).
-Define "ground truth" logic based only on the task description (e.g., if the task is 'L, R, X' sorting, it must define _apply_move functions).
-Define a list of test cases (e.g., specific_vectors) including edge cases (empty, single, already sorted, reverse, etc.).
-Write the code string to a temporary file.
-Run the temporary file as a subprocess (sys.executable) for each test case, passing the test input as a JSON string in sys.argv[1].
-Use subprocess.communicate with the EXEC_TIMEOUT from task_config.
-Parse the subprocess stdout as JSON.
-Verify the JSON output structure (e.g., keys "moves", "sorted_array").
-Verify the correctness of the output using the ground-truth logic (e.g., check if the array is sorted AND if applying the "moves" list to the input actually produces the sorted array).
-Return (True, "All tests passed", summary_dict) on success.
-Return (False, "Error message", summary_dict) on failure (timeout, JSON error, logic error, etc.).
+The `test_code` function must:
+-   Accept the Python `code` as a string and `task_config` (which will be the `TASK_CONSTANTS` dict).
+-   Define "ground truth" logic based *only* on the task description (e.g., if the task is 'L, R, X' sorting, it must define `_apply_move` functions).
+-   Define a list of test cases (e.g., `specific_vectors`) including edge cases (empty, single, already sorted, reverse, etc.).
+-   Write the `code` string to a temporary file.
+-   Run the temporary file as a subprocess (`sys.executable`) for each test case, passing the test input as a JSON string in `sys.argv[1]`.
+-   Use `subprocess.communicate` with the `EXEC_TIMEOUT` from `task_config`.
+-   Parse the subprocess `stdout` as JSON.
+-   Verify the JSON output structure (e.g., keys "moves", "sorted_array").
+-   Verify the *correctness* of the output using the ground-truth logic (e.g., check if the array is sorted AND if applying the "moves" list to the input actually produces the sorted array).
+-   Return `(True, "All tests passed", summary_dict)` on success.
+-   Return `(False, "Error message", summary_dict)` on failure (timeout, JSON error, logic error, etc.).
 
 TASK DESCRIPTION:
+---
 {task_prompt}
-Your response MUST be only the raw, executable Python code containing TASK_CONSTANTS and test_code. Do not include explanations, markdowns, or any other text.
+---
+
+Your response MUST be *only* the raw, executable Python code containing `TASK_CONSTANTS` and `test_code`. Do not include explanations, markdowns, or any other text.
 """
 
+# Template for FIX (automatically inserts the full task prompt)
 FIX_PROMPT_TEMPLATE = r"""
 You are a Python debugging assistant. The following code, intended to solve the task below, did not work correctly. Fix it to meet all requirements.
 
-TASK ---
+--- TASK ---
 {task_prompt}
-FAILED CODE ---
+---
+
+--- FAILED CODE ---
 {code}
-ISSUE ---
+---
+
+--- ISSUE ---
 {error}
-Respond with only the fixed, self-contained, executable Python code. Do not include explanations or markdown.
+---
+
+Respond with *only* the fixed, self-contained, executable Python code. Do not include explanations or markdown.
 """
 
+# Template for REFACTOR (automatically inserts the full task prompt)
 REFACTOR_PROMPT_TEMPLATE = r"""
 You are an expert Python programmer. Compare the current and previous versions of this code and perform a full refactor to improve efficiency and correctness, ensuring it solves the task.
 
-TASK ---
+--- TASK ---
 {task_prompt}
-CURRENT CODE ---
+---
+
+--- CURRENT CODE ---
 {code}
-PREVIOUS VERSION ---
+---
+
+--- PREVIOUS VERSION ---
 {prev}
-Respond with only the refactored, self-contained, executable Python code. Do not include explanations or markdown.
+---
+
+Respond with *only* the refactored, self-contained, executable Python code. Do not include explanations or markdown.
 """
 
+# Template for REFACTOR_NO_PREV (automatically inserts the full task prompt)
 REFACTOR_NO_PREV_TEMPLATE = r"""
 You are an expert Python programmer. Refactor the following code to improve its efficiency and correctness, ensuring it solves the task.
 
-TASK ---
+--- TASK ---
 {task_prompt}
-CURRENT CODE ---
+---
+
+--- CURRENT CODE ---
 {code}
-Respond with only the refactored, self-contained, executable Python code. Do not include explanations or markdown.
+---
+
+Respond with *only* the refactored, self-contained, executable Python code. Do not include explanations or markdown.
 """
 
 def get_models_list(config: Dict) -> List[str]:
@@ -315,10 +484,11 @@ def get_models_list(config: Dict) -> List[str]:
                         working_models.add(model_name)
     except requests.RequestException as e:
         print(f"Warning: Failed to download {url_txt}. Reason: {e}. Using only g4f.models.", file=sys.stderr)
-
+        text = ''
+    
     try:
         from g4f.models import Model
-        all_g4f_models = Model.all()
+        all_g4f_models = Model.__all__()
         g4f_models = set()
         for model_name in all_g4f_models:
             if 'flux' not in model_name.lower() and not any(sub in model_name.lower() for sub in ['image', 'vision', 'audio', 'video']):
@@ -326,7 +496,7 @@ def get_models_list(config: Dict) -> List[str]:
     except ImportError:
         print("Warning: Failed to import g4f.models. Model list may be incomplete.", file=sys.stderr)
         g4f_models = set()
-
+    
     all_models_set = working_models.union(g4f_models)
 
     if 'CUSTOM_MODELS' in config and 'HF_MODELS' in config['CUSTOM_MODELS']:
@@ -334,15 +504,17 @@ def get_models_list(config: Dict) -> List[str]:
         if hf_models:
             print(f"Adding {len(hf_models)} custom HuggingFace models...")
             all_models_set.update(hf_models)
-
+    
     all_models = list(all_models_set)
     all_models = [m for m in all_models if m not in ['sldx-turbo', 'turbo']]
     return all_models
 
+
 def llm_query(model: Any, prompt: str, retries_config: Dict, config: Dict, progress_queue: queue.Queue, stage: str = None) -> Optional[str]:
     """
-    Query LLM with improved error handling and fallbacks.
+    Query LLM, now supporting g4f Model objects, string names, and 'hf:' prefixed strings.
     """
+    # Handle g4f Model objects by getting their name
     if isinstance(model, g4f.models.Model):
         model_name_str = model.name
     else:
@@ -354,6 +526,7 @@ def llm_query(model: Any, prompt: str, retries_config: Dict, config: Dict, progr
     local.current_stage = stage
 
     request_timeout = config['CONSTANTS']['REQUEST_TIMEOUT']
+    
     is_hf_model = model_name_str.startswith('hf:')
 
     for attempt in range(retries_config['max_retries'] + 1):
@@ -364,11 +537,11 @@ def llm_query(model: Any, prompt: str, retries_config: Dict, config: Dict, progr
                 host = config['CUSTOM_MODELS']['HF_API_URL']
 
                 if not token:
-                    progress_queue.put((model_name_str, 'log', 'Error: HF_API_TOKEN not set. Skipping HuggingFace model.'))
+                    progress_queue.put((model_name_str, 'log', 'Error: HF_API_TOKEN not set in env or config. Skipping HuggingFace model.'))
                     return None
 
                 progress_queue.put((model_name_str, 'log', f'Using HuggingFace provider for {hf_model_name} (Attempt {attempt+1})'))
-
+                
                 response = g4f.ChatCompletion.create(
                     model=hf_model_name,
                     messages=[{"role": "user", "content": prompt}],
@@ -377,14 +550,16 @@ def llm_query(model: Any, prompt: str, retries_config: Dict, config: Dict, progr
                     api_host=host,
                     timeout=request_timeout * 2
                 )
+            
             else:
+                # Use the 'model' argument directly, which can be an object or string
                 response = g4f.ChatCompletion.create(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
                     provider=Provider.AnyProvider,
                     timeout=request_timeout
                 )
-
+            
             if response and response.strip():
                 if not is_hf_model:
                     s_provider = local.current_data.get('success', 'Unknown')
@@ -402,14 +577,12 @@ def llm_query(model: Any, prompt: str, retries_config: Dict, config: Dict, progr
             error_msg = f'g4f Error (attempt {attempt+1}): {e}'
             progress_queue.put((model_name_str, 'log', error_msg))
             if is_hf_model:
-                local.current_data['errors'] = str(e)
-
+                local.current_data['errors']['HuggingFace'] = str(e)
+            
+        
         if attempt < retries_config['max_retries']:
-            wait_time = retries_config['backoff_factor'] * (2 ** attempt)
-            progress_queue.put((model_name_str, 'log', f'Waiting {wait_time}s before retry...'))
-            time.sleep(wait_time)
+            time.sleep(retries_config['backoff_factor'] * (2 ** attempt))
 
-    progress_queue.put((model_name_str, 'log', f'All {retries_config["max_retries"] + 1} attempts failed'))
     return None
 
 def find_working_harness_model(config: Dict, progress_queue: queue.Queue) -> Optional[Any]:
@@ -419,16 +592,16 @@ def find_working_harness_model(config: Dict, progress_queue: queue.Queue) -> Opt
     print("--- Finding a working Harness Generator Model ---")
     test_prompt = "Respond with only the single word: 'OK'"
     models_to_test = config['CONSTANTS']['HARNESS_GENERATOR_MODELS']
-
+    
     if not models_to_test:
-        print("Error: HARNESS_GENERATOR_MODELS list in config is empty.", file=sys.stderr)
+        print("Error: `HARNESS_GENERATOR_MODELS` list in config is empty.", file=sys.stderr)
         return None
-
+        
     for model in models_to_test:
         model_name = model.name if isinstance(model, g4f.models.Model) else str(model)
         print(f"Testing model: {model_name}...")
         progress_queue.put(("HARNESS_TEST", 'log', f"Pinging model: {model_name}"))
-
+        
         response = llm_query(
             model=model,
             prompt=test_prompt,
@@ -437,7 +610,7 @@ def find_working_harness_model(config: Dict, progress_queue: queue.Queue) -> Opt
             progress_queue=progress_queue,
             stage='harness_test'
         )
-
+        
         if response and 'ok' in response.lower().strip():
             print(f"SUCCESS: Model {model_name} is working and will be used.")
             progress_queue.put(("HARNESS_TEST", 'log', f"SUCCESS: Selected {model_name}"))
@@ -450,7 +623,9 @@ def find_working_harness_model(config: Dict, progress_queue: queue.Queue) -> Opt
     return None
 
 def generate_prompt_templates(initial_prompt: str) -> Dict[str, str]:
-    """Generates all prompt variants based on the single initial prompt."""
+    """
+    Generates all prompt variants based on the single initial prompt.
+    """
     return {
         'INITIAL': initial_prompt,
         'FIX': FIX_PROMPT_TEMPLATE.format(task_prompt=initial_prompt, code="{code}", error="{error}"),
@@ -459,12 +634,14 @@ def generate_prompt_templates(initial_prompt: str) -> Dict[str, str]:
     }
 
 def generate_task_harness(initial_prompt: str, harness_model: Any, engine_config: Dict, progress_queue: queue.Queue) -> Optional[Dict]:
-    """Generates the test harness with comprehensive error handling."""
+    """
+    Uses the validated LLM to generate the `test_code` function and `TASK_CONSTANTS`.
+    """
     print("--- Starting Task Harness Generation (Meta-Step) ---")
-
+    
     meta_prompt = META_PROMPT_TEMPLATE.format(task_prompt=initial_prompt)
     model_name_str = harness_model.name if isinstance(harness_model, g4f.models.Model) else str(harness_model)
-
+    
     print(f"Using validated model: {model_name_str} to generate test_code function...")
     progress_queue.put(("HARNESS_GEN", 'log', f"Calling {model_name_str} with meta-prompt..."))
 
@@ -483,53 +660,63 @@ def generate_task_harness(initial_prompt: str, harness_model: Any, engine_config
         return None
 
     cleaned_code = clean_code(response_code)
-
+    
     if not cleaned_code:
         print("FATAL ERROR: LLM response for harness was empty after cleaning.", file=sys.stderr)
+        print(f"Original response: {response_code}", file=sys.stderr)
         return None
 
     print("Test harness code received. Executing to load definitions...")
-
-    # Dynamic execution with comprehensive error handling
+    
+    # --- Dynamic execution of the LLM-generated code ---
     context = {}
     try:
+        # Provide necessary imports for the generated code to run
         exec(cleaned_code, {
             'json': json, 'sys': sys, 'subprocess': subprocess, 'tempfile': tempfile,
             'os': os, 'psutil': psutil, 'traceback': traceback, 'time': time,
-            'perf_counter': perf_counter, 'Dict': Dict, 'List': List,
+            'perf_counter': perf_counter, 'Dict': Dict, 'List': List, 
             'Optional': Optional, 'Tuple': Tuple, 'random': random,
-            'queue': queue, 're': re,
+            'queue': queue,
+            # Add other common libraries the test function might need
+            're': re, 
             'collections': __import__('collections')
         }, context)
     except Exception as e:
-        print(f"FATAL ERROR: Failed to execute generated test harness code: {e}", file=sys.stderr)
+        print(f"FATAL ERROR: Failed to execute generated test harness code.", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
+        print(f"--- Generated Code ---:\n{cleaned_code}\n---", file=sys.stderr)
         traceback.print_exc()
         return None
 
-    # Validate the generated code
     if 'test_code' not in context or not callable(context['test_code']):
-        print("FATAL ERROR: Generated code did not define a callable test_code function.", file=sys.stderr)
+        print(f"FATAL ERROR: Generated code did not define a callable `test_code` function.", file=sys.stderr)
         return None
-
+        
     if 'TASK_CONSTANTS' not in context or not isinstance(context['TASK_CONSTANTS'], dict):
-        print("FATAL ERROR: Generated code did not define a TASK_CONSTANTS dictionary.", file=sys.stderr)
+        print(f"FATAL ERROR: Generated code did not define a `TASK_CONSTANTS` dictionary.", file=sys.stderr)
         return None
 
     print("--- Task Harness Generation SUCCESS ---")
+    
     return {
         "test_code_func": context['test_code'],
         "TASK_CONSTANTS": context['TASK_CONSTANTS']
     }
 
+
 def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: Dict, progress_queue: queue.Queue) -> Dict:
-    """Process one model with comprehensive error handling."""
+    """
+    Process one model: sequence of LLM queries, test, fix, refactor.
+    """
     iterations = []
     current_code = None
     prev_code = None
     early_stop = False
-
+    
     TASK_CONSTANTS = task_config['TASK_CONSTANTS']
     test_code_func = task_config['test_code_func']
+    
     STAGES = engine_config['STAGES']
     RETRIES = engine_config['RETRIES']
     CONSTANTS = engine_config['CONSTANTS']
@@ -545,13 +732,13 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
         progress_queue.put((model, 'progress', (current_stage_count, total_stages)))
 
     def run_test(code_to_test, stage_name):
-        """Internal function for testing with error handling."""
+        """Internal function for testing. Calls dynamically generated test_code_func."""
         if not code_to_test or not code_to_test.strip():
             progress_queue.put((model, 'log', f'Test {stage_name}: Skipped (no code).'))
             return False, "No code to test", None
-
+            
         progress_queue.put((model, 'log', f'Test {stage_name}: Running generated test_code_func...'))
-
+        
         try:
             success, issue, summary = test_code_func(code_to_test, TASK_CONSTANTS)
         except Exception as e:
@@ -560,7 +747,7 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
             success = False
             issue = f"Error during generated test_code execution: {e}"
             summary = {'error': issue, 'traceback': tb_str}
-
+        
         if success:
             progress_queue.put((model, 'log', f'Test {stage_name}: SUCCESS. {issue}'))
         else:
@@ -568,18 +755,19 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
         return success, issue, summary
 
     def run_llm_query(prompt, stage_name, retries_key='FIX'):
-        """Internal function for LLM query with error handling."""
-        progress_queue.put((model, 'log', f'Stage: {stage_name}. Prompt length: {len(prompt)}'))
+        """Internal function for LLM query. Passes engine_config."""
+        progress_queue.put((model, 'log', f'Stage: {stage_name}. Prompt:\n{prompt[:500]}...'))
         retries_cfg = RETRIES[retries_key]
+        progress_queue.put((model, 'log', f'Calling llm_query with retries: {retries_cfg}'))
         
         response = llm_query(model, prompt, retries_cfg, engine_config, progress_queue, stage_name)
-
+        
         tried = local.current_data.get('tried', [])
         success_p = local.current_data.get('success', None)
-
+        
         if response:
             cleaned = clean_code(response)
-            progress_queue.put((model, 'log', f'Received response (cleaned length: {len(cleaned)})'))
+            progress_queue.put((model, 'log', f'Received response (length: {len(response)}), cleaned (length: {len(cleaned)}):\n{cleaned[:500]}...'))
             return cleaned, None, tried, success_p
         else:
             error_msg = CONSTANTS['ERROR_NO_RESPONSE']
@@ -596,127 +784,391 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
             'test_summary': test_summary
         })
 
-    # Start processing
+    # ---
+    # START OF PROCESS
+    # ---
     progress_queue.put((model, 'log', f'=== STARTING MODEL PROCESSING: {model} ==='))
+    
+    # 1. Initial
+    stage = STAGES['INITIAL']
+    update_progress(stage)
+    prompt = prompts['INITIAL']
+    current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
+    add_iteration(stage, current_code, llm_error, None, tried, s_provider)
+    if llm_error:
+        progress_queue.put((model, 'status', f'Error at stage: {stage}'))
+        return {'model': model, 'iterations': iterations, 'final_code': None,
+                'final_test': {'success': False, 'summary': None, 'issue': 'No initial response'}}
 
-    try:
-        # 1. Initial response
-        stage = STAGES['INITIAL']
+    # 2. Test & Fix (Initial)
+    stage = STAGES['FIX_INITIAL']
+    update_progress(stage)
+    success, issue, summary = run_test(current_code, stage)
+    if not success:
+        prompt = prompts['FIX'].format(code=current_code, error=issue)
+        current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
+        add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
+        if llm_error:
+            early_stop = True
+    else:
+        add_iteration(stage, current_code, None, summary, [], None) 
+    if early_stop:
+        progress_queue.put((model, 'status', f'Error at stage: {stage}'))
+        return {'model': model, 'iterations': iterations, 'final_code': current_code,
+                'final_test': {'success': False, 'summary': summary, 'issue': f'LLM error during {stage}'}}
+
+    # 3. Refactor (First)
+    prev_code = current_code
+    stage = STAGES['REFACTOR_FIRST']
+    update_progress(stage)
+    prompt = prompts['REFACTOR_NO_PREV'].format(code=current_code)
+    current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
+    add_iteration(stage, current_code, llm_error, None, tried, s_provider)
+    if llm_error:
+        current_code = prev_code
+        progress_queue.put((model, 'log', f'Error {stage}, rolling back to previous code version.'))
+    
+    # 4. Test & Fix (After Refactor 1)
+    stage = STAGES['FIX_AFTER_REFACTOR']
+    update_progress(stage)
+    success, issue, summary = run_test(current_code, stage)
+    if not success:
+        prompt = prompts['FIX'].format(code=current_code, error=issue)
+        current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
+        add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
+        if llm_error:
+            early_stop = True
+    else:
+        add_iteration(stage, current_code, None, summary, [], None)
+    if early_stop:
+        progress_queue.put((model, 'status', f'Error at stage: {stage}'))
+        return {'model': model, 'iterations': iterations, 'final_code': current_code,
+                'final_test': {'success': False, 'summary': summary, 'issue': f'LLM error during {stage}'}}
+
+    # 5. Refactor Loops (N times)
+    for i in range(CONSTANTS['NUM_REFACTOR_LOOPS']):
+        if not current_code or not current_code.strip():
+            progress_queue.put((model, 'log', f'Skipping refactor loop {i+1} (no code).'))
+            update_progress(f'loop {i+1} refactor (skip)')
+            update_progress(f'loop {i+1} fix (skip)')
+            continue
+        
+        # 5a. Refactor
+        stage = f"{STAGES['REFACTOR']}_{i+1}"
         update_progress(stage)
-        prompt = prompts['INITIAL']
+        prompt = prompts['REFACTOR'].format(code=current_code, prev=prev_code)
+        prev_code = current_code
         current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
         add_iteration(stage, current_code, llm_error, None, tried, s_provider)
+        if llm_error:
+            current_code = prev_code
+            progress_queue.put((model, 'log', f'Error {stage}, rolling back to previous code version.'))
         
-        if llm_error or not current_code:
-            progress_queue.put((model, 'status', f'Error at stage: {stage}'))
-            return {
-                'model': model, 
-                'iterations': iterations, 
-                'final_code': None,
-                'final_test': {'success': False, 'summary': None, 'issue': 'No initial response'}
-            }
-
-        # Continue with other stages...
-        # [Rest of the processing logic remains similar but with better error handling]
-
-        # Final test
-        stage = 'final_test'
+        # 5b. Test & Fix
+        stage = f"{STAGES['FIX_LOOP']}_{i+1}"
         update_progress(stage)
         success, issue, summary = run_test(current_code, stage)
-        add_iteration(stage, current_code, None if success else issue, summary, [], None)
-        
-        if success:
-            progress_queue.put((model, 'log', f'FINAL: SUCCESS. {issue}'))
-            progress_queue.put((model, 'status', 'Success (final test)'))
+        if not success:
+            prompt = prompts['FIX'].format(code=current_code, error=issue)
+            current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
+            add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
+            if llm_error:
+                progress_queue.put((model, 'status', f'Error at stage: {stage}, STOPPING LOOP'))
+                break
         else:
-            progress_queue.put((model, 'log', f'FINAL: FAILED. Reason: {issue}'))
-            progress_queue.put((model, 'status', 'Failed (final test)'))
+            add_iteration(stage, current_code, None, summary, [], None)
 
-        return {
-            'model': model,
-            'iterations': iterations,
-            'final_code': current_code,
-            'final_test': {'success': success, 'summary': summary, 'issue': issue}
-        }
+    # 6. Final Test
+    stage = 'final_test'
+    update_progress(stage)
+    success, issue, summary = run_test(current_code, stage)
+    add_iteration(stage, current_code, None if success else issue, summary, [], None)
+    if success:
+        progress_queue.put((model, 'log', f'FINAL: SUCCESS. {issue}'))
+        progress_queue.put((model, 'status', 'Success (final test)'))
+    else:
+        progress_queue.put((model, 'log', f'FINAL: FAILED. Reason: {issue}'))
+        progress_queue.put((model, 'status', 'Failed (final test)'))
 
-    except Exception as e:
-        error_msg = f"Unexpected error in process_model: {e}"
-        progress_queue.put((model, 'log', f'CRITICAL ERROR: {error_msg}'))
-        traceback.print_exc()
-        return {
-            'model': model,
-            'iterations': iterations,
-            'final_code': current_code,
-            'final_test': {'success': False, 'summary': None, 'issue': error_msg},
-            'error': error_msg
-        }
+    return {
+        'model': model,
+        'iterations': iterations,
+        'final_code': current_code,
+        'final_test': {'success': success, 'summary': summary, 'issue': issue}
+    }
+
 
 def save_results(results, folder, filename):
-    """Safely save results to JSON with error handling."""
+    """Safely save results to JSON."""
     if not os.path.exists(folder):
         try:
             os.makedirs(folder)
         except OSError as e:
             print(f"Error creating folder {folder}: {e}", file=sys.stderr)
-            return False
+            return
     path = os.path.join(folder, filename)
     try:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
-        return True
     except Exception as e:
         print(f"Error saving file {path}: {e}", file=sys.stderr)
+
+def validate_harness(test_code_func, task_constants, validation_code: str) -> bool:
+    """
+    Validates a generated harness against a known correct solution.
+    """
+    print("--- Validating Generated Harness ---")
+    # Write the validation code to a temporary file
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
+            temp_file.write(validation_code)
+            temp_file_path = temp_file.name
+
+        # Example input for validation (this should be task-specific)
+        example_input = "[3, 1, 4, 1, 5]" # Example: Replace with relevant input
+        # Example expected output based on validation_code
+        example_expected_output = "[1, 1, 3, 4, 5]" # Example: Replace with expected output
+
+        # Attempt to run the validation code as a subprocess to get its output
+        try:
+            proc_result = subprocess.run(
+                [sys.executable, temp_file_path, example_input],
+                capture_output=True,
+                text=True,
+                timeout=task_constants.get('EXEC_TIMEOUT', 10)
+            )
+            if proc_result.returncode != 0:
+                 print(f"Validation code failed to run: {proc_result.stderr}")
+                 return False
+            # Assuming the validation code prints its result as JSON
+            try:
+                val_output = json.loads(proc_result.stdout.strip())
+            except json.JSONDecodeError:
+                 print(f"Validation code did not output valid JSON: {proc_result.stdout}")
+                 return False
+
+        except subprocess.TimeoutExpired:
+             print(f"Validation code timed out.")
+             return False
+        finally:
+            os.unlink(temp_file_path) # Clean up the temporary file
+
+        # Now run the *test harness* against the validation code's output
+        # We need to simulate the 'code' argument to test_code_func as the validation code itself
+        # This is complex. A simpler approach might be to test if the harness can correctly
+        # evaluate a *known good* output string against the example input.
+        # Let's try testing the harness function directly with example data
+        # assuming the harness can handle raw inputs/outputs if needed for validation.
+
+        # A more direct validation: run the harness against the validation code string
+        # This checks if the harness can handle a code that *should* work.
+        # The harness might run the code and compare its output to expected results.
+        # This requires the harness to be designed to accept the validation code.
+        # Let's assume the harness can run the validation code string and pass.
+        # Create a simple code string that matches the expected input/output structure.
+        simple_correct_code_str = f"""
+import json
+import sys
+if len(sys.argv) > 1:
+    input_data = json.loads(sys.argv[1])
+else:
+    input_data = {example_input} # Default example
+
+# Correct logic based on example
+result = solve_task(input_data)
+
+# Print the result as JSON
+print(json.dumps(result))
+"""
+
+        success, message, summary = test_code_func(simple_correct_code_str, task_constants)
+        if success:
+            print("--- Harness Validation SUCCESS ---")
+            return True
+        else:
+            print(f"--- Harness Validation FAILED: {message} ---")
+            return False
+
+    except Exception as e:
+        print(f"--- Harness Validation CRITICAL ERROR: {e} ---")
+        traceback.print_exc()
         return False
 
+def generate_multiple_harnesses(initial_prompt: str, engine_config: Dict, progress_queue: queue.Queue) -> List[Dict]:
+    """
+    Generates multiple test harnesses using different models and validates them.
+    Returns a list of validated harness configurations {test_code_func, TASK_CONSTANTS}.
+    """
+    print("--- Generating Multiple Task Harnesses ---")
+    harness_models = engine_config['CONSTANTS']['HARNESS_GENERATOR_MODELS']
+    validated_harnesses = []
+    validation_code = engine_config['CONSTANTS'].get('HARNESS_VALIDATION_CODE', "")
+    if not validation_code:
+        print("Warning: HARNESS_VALIDATION_CODE not provided. Skipping validation step.", file=sys.stderr)
+        # Proceed with generation but warn about lack of validation
+
+    for i, model in enumerate(harness_models):
+        model_name_str = model.name if isinstance(model, g4f.models.Model) else str(model)
+        print(f"--- Attempting Harness Generation with Model {i+1}/{len(harness_models)}: {model_name_str} ---")
+
+        task_config = generate_task_harness(initial_prompt, model, engine_config, progress_queue)
+        if task_config:
+            if validation_code: # Only validate if a validation code is provided
+                if validate_harness(task_config['test_code_func'], task_config['TASK_CONSTANTS'], validation_code):
+                    validated_harnesses.append(task_config)
+                    print(f"--- Harness from {model_name_str} is VALIDATED ---")
+                else:
+                    print(f"--- Harness from {model_name_str} FAILED validation and is discarded. ---")
+            else: # If no validation code, add the harness anyway (less robust)
+                 validated_harnesses.append(task_config)
+                 print(f"--- Harness from {model_name_str} added without validation. ---")
+
+    print(f"--- Generated {len(validated_harnesses)} validated harness(es) out of {len(harness_models)} attempts. ---")
+    return validated_harnesses
+
+# --- Modify the main function ---
 def main():
-    """Main function with comprehensive error handling."""
-    if len(sys.argv) < 2:
+    """
+    Main function: Loads task prompt from .txt, generates harness(es),
+    loads models, and starts thread pool.
+    """
+    if len(sys.argv) != 2:
         print("Usage: python script.py <task_prompt_file.txt>", file=sys.stderr)
         sys.exit(1)
-
     task_prompt_path = sys.argv[1]
     try:
         with open(task_prompt_path, 'r', encoding='utf-8') as f:
-            initial_prompt = f.read().strip()
-        if not initial_prompt:
+            initial_prompt = f.read()
+        if not initial_prompt.strip():
             print(f"Error: Task prompt file is empty: {task_prompt_path}", file=sys.stderr)
             sys.exit(1)
         print(f"Loaded task prompt from: {task_prompt_path}")
+    except FileNotFoundError:
+        print(f"Error: Task prompt file not found: {task_prompt_path}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"Error reading task prompt file: {e}", file=sys.stderr)
         sys.exit(1)
 
     progress_queue = queue.Queue()
 
-    # 1. Find working harness model
-    working_harness_model = find_working_harness_model(ENGINE_CONFIG, progress_queue)
-    if working_harness_model is None:
-        print("FATAL: Could not find a working harness generator model. Exiting.", file=sys.stderr)
+    # 1. Generate multiple validated harnesses
+    harness_configs = generate_multiple_harnesses(initial_prompt, ENGINE_CONFIG, progress_queue)
+    if not harness_configs:
+        print("FATAL: Could not generate any validated task harnesses. Exiting.", file=sys.stderr)
         sys.exit(1)
 
-    # 2. Generate task harness
-    task_config = generate_task_harness(initial_prompt, working_harness_model, ENGINE_CONFIG, progress_queue)
-    if task_config is None:
-        print("FATAL: Could not generate task harness. Exiting.", file=sys.stderr)
-        sys.exit(1)
+    # Select the first validated harness for testing models (or implement consensus logic)
+    # For simplicity, use the first one found.
+    selected_task_config = harness_configs[0]
+    print(f"Selected harness from model: {selected_task_config.get('source_model', 'Unknown')}")
 
-    # 3. Generate prompt templates
+
+    # --- Rest of the main function remains largely the same ---
+    # Use 'selected_task_config' instead of the old single 'task_config'
+    # Generate prompt templates
     prompts = generate_prompt_templates(initial_prompt)
     print("All prompt templates generated.")
 
-    # Load models and start processing
+    print("Loading model list...")
+    if ENGINE_CONFIG.get('CUSTOM_MODELS', {}).get('HF_MODELS') and not ENGINE_CONFIG.get('CUSTOM_MODELS', {}).get('HF_API_TOKEN'):
+        print("Warning: HF_MODELS are specified, but HF_API_TOKEN is not set. These models will likely fail.", file=sys.stderr)
+
     try:
         models = get_models_list(ENGINE_CONFIG)
         if not models:
-            print("No models found. Check configuration.", file=sys.stderr)
+            print("No models found. Check URLS, g4f.models, and CUSTOM_MODELS.", file=sys.stderr)
             return
         print(f"Found {len(models)} unique models for testing.")
     except Exception as e:
         print(f"Failed to load model list: {e}", file=sys.stderr)
+        traceback.print_exc()
         return
 
-    # Continue with thread pool execution...
-    # [Rest of main function with improved error handling]
+    intermediate_folder = ENGINE_CONFIG['CONSTANTS']['INTERMEDIATE_FOLDER']
+    if not os.path.exists(intermediate_folder):
+        try:
+            os.makedirs(intermediate_folder)
+        except OSError as e:
+            print(f"Failed to create folder {intermediate_folder}: {e}", file=sys.stderr)
+            return
+
+    all_results = {}
+    MAX_MODELS_TO_TEST = -1 # -1 for all
+    if MAX_MODELS_TO_TEST > 0:
+        models_to_test = models[:MAX_MODELS_TO_TEST]
+        print(f"--- STARTING TEST (Limited to {len(models_to_test)} models) ---")
+    else:
+        models_to_test = models
+        print(f"--- STARTING TEST (All {len(models_to_test)} models) ---")
+
+    try:
+        # Pass the selected_task_config (which contains test_code_func and TASK_CONSTANTS)
+        # to the process_model function.
+        with ThreadPoolExecutor(max_workers=ENGINE_CONFIG['CONSTANTS']['MAX_WORKERS']) as executor:
+            futures = {
+                executor.submit(process_model, model, selected_task_config, prompts, ENGINE_CONFIG, progress_queue): model
+                for model in models_to_test
+            }
+            # ... (rest of the executor logic remains the same)
+            completed_count = 0
+            total_count = len(futures)
+            start_time_main = perf_counter()
+            while completed_count < total_count:
+                done_futures = [f for f in futures if f.done()]
+                for future in done_futures:
+                    model = futures.pop(future)
+                    completed_count += 1
+                    try:
+                        result = future.result()
+                        all_results[model] = result
+                        final_success = result.get('final_test', {}).get('success', False)
+                        status_str = "SUCCESS" if final_success else "FAILED"
+                        if result.get('final_code'):
+                            code_filename = f"{model.replace('/', '_')}_final.py"
+                            code_path = os.path.join(intermediate_folder, code_filename)
+                            try:
+                                with open(code_path, 'w', encoding='utf-8') as f:
+                                    f.write(result['final_code'])
+                            except Exception as e:
+                                print(f"Error saving code for {model}: {e}", file=sys.stderr)
+                        print(f"--- ({completed_count}/{total_count}) COMPLETED: {model} [Status: {status_str}] ---")
+                    except Exception as e:
+                        print(f"--- ({completed_count+1}/{total_count}) CRITICAL ERROR (Executor): {model} ---")
+                        tb_str = traceback.format_exc()
+                        print(tb_str, file=sys.stderr)
+                        all_results[model] = {'error': str(e), 'traceback': tb_str, 'iterations': [], 'final_code': None, 'final_test': {'success': False, 'summary': None, 'issue': str(e)}}
+                    if completed_count % ENGINE_CONFIG['CONSTANTS']['N_SAVE'] == 0 or completed_count == total_count:
+                        save_results(all_results, intermediate_folder, f"intermediate_results_{completed_count}.json")
+                try:
+                    while not progress_queue.empty():
+                        model, type, message = progress_queue.get_nowait()
+                        # (Uncomment for detailed logs)
+                        # if type == 'log':
+                        #     print(f"LOG [{model}]: {message}")
+                        # elif type == 'status':
+                        #     print(f"STATUS [{model}]: {message}")
+                except queue.Empty:
+                    pass
+                time.sleep(0.2)
+    except KeyboardInterrupt:
+        print("\nStopping at user request... (Waiting for current threads to finish)")
+    finally:
+        end_time_main = perf_counter()
+        total_time_main = end_time_main - start_time_main
+        print("--- TESTING FINISHED ---")
+        print(f"Total execution time: {total_time_main:.2f} sec.")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        final_filename = f"final_results_{timestamp}.json"
+        save_results(all_results, intermediate_folder, final_filename)
+        print(f"Final results saved to: {os.path.join(intermediate_folder, final_filename)}")
+        success_count = sum(1 for res in all_results.values() if res.get('final_test', {}).get('success', False))
+        fail_count = len(all_results) - success_count
+        print(f"Totals: {success_count} Successful, {fail_count} Failed.")
+
+if __name__ == "__main__":
+    main()
+
 
 if __name__ == "__main__":
     main()
