@@ -59,14 +59,17 @@ def clean_code(code: str) -> str:
     # Find first block ```python\n... (up to next ``` or end)
     
     # === FIX 1 (Was: match = re.search(r'...) ===
-    match = re.search(r'```(?:python\n)?(.*?)\n```', code, re.DOTALL | re.MULTILINE)
+    match = re.search(r'```python\n(.*?)\n```', code, re.DOTALL | re.MULTILINE)
+
 
     if match:
         code = match.group(1)
     # Alternative: if block without closing ```, search from first ``` to end
     else:
         # === FIX 2 (Was: match = re.search(r'...) ===
-        match = re.search(r'```(?:python\n)?(.*?)$', code, re.DOTALL | re.MULTILINE)
+        match = re.search(r'```python\n(.*)', code, re.DOTALL | re.MULTILINE)
+
+
 
         if match:
             code = match.group(1)
@@ -74,7 +77,8 @@ def clean_code(code: str) -> str:
     # Step 3: Final regex cleanup (for nested markdown)
     # Remove ```python block at start
     # === FIX 3 (Was: code = re.sub(r'^...) ===
-    code = re.sub(r'^```(?:python\n)?', '', code, flags=re.MULTILINE)
+    code = re.sub(r'^```python\n?', '', code, flags=re.MULTILINE)
+
 
     # Remove ``` block at end
     code = re.sub(r'\n?```\s*$', '', code, flags=re.MULTILINE)
@@ -488,15 +492,32 @@ def find_working_harness_model(config: Dict, progress_queue: queue.Queue) -> Opt
     print("--- CRITICAL: No working harness generator model found. ---", file=sys.stderr)
     return None
 
+# =============================================================================
+# === BUG FIX: `generate_prompt_templates` ===
+# =============================================================================
+#
+# ORIGINAL PROBLEM:
+# The `KeyError: '\n "moves"'` from the log indicates that the `initial_prompt`
+# (the task description) contained "{...}" syntax (like a JSON example).
+# The old function pre-formatted `FIX_PROMPT_TEMPLATE.format(task_prompt=initial_prompt, ...)`
+# which caused the .format() call to fail.
+#
+# SOLUTION:
+# This function now *only* stores the raw templates. The `initial_prompt` is
+# stored separately. All placeholders (`{task_prompt}`, `{code}`, `{error}`)
+# will be formatted at the same time inside the `process_model` function,
+# preventing the `KeyError`.
+#
 def generate_prompt_templates(initial_prompt: str) -> Dict[str, str]:
     """
     Generates all prompt variants based on the single initial prompt.
     """
     return {
         'INITIAL': initial_prompt,
-        'FIX': FIX_PROMPT_TEMPLATE.format(task_prompt=initial_prompt, code="{code}", error="{error}"),
-        'REFACTOR': REFACTOR_PROMPT_TEMPLATE.format(task_prompt=initial_prompt, code="{code}", prev="{prev}"),
-        'REFACTOR_NO_PREV': REFACTOR_NO_PREV_TEMPLATE.format(task_prompt=initial_prompt, code="{code}")
+        'TASK_PROMPT': initial_prompt,  # Store the prompt for later formatting
+        'FIX': FIX_PROMPT_TEMPLATE,     # Store the raw template
+        'REFACTOR': REFACTOR_PROMPT_TEMPLATE, # Store the raw template
+        'REFACTOR_NO_PREV': REFACTOR_NO_PREV_TEMPLATE # Store the raw template
     }
 
 def generate_task_harness(initial_prompt: str, harness_model: Any, engine_config: Dict, progress_queue: queue.Queue) -> Optional[Dict]:
@@ -587,6 +608,14 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
     STAGES = engine_config['STAGES']
     RETRIES = engine_config['RETRIES']
     CONSTANTS = engine_config['CONSTANTS']
+    
+    # --- BUG FIX ---
+    # Get the task_prompt, which is now stored separately in the prompts dict
+    task_prompt = prompts.get('TASK_PROMPT', '') 
+    if not task_prompt:
+        print(f"CRITICAL ERROR for model {model}: TASK_PROMPT is missing from prompts dict.", file=sys.stderr)
+        return {'model': model, 'iterations': [], 'final_code': None,
+                'final_test': {'success': False, 'summary': None, 'issue': 'TASK_PROMPT missing'}}
 
     num_loops = CONSTANTS['NUM_REFACTOR_LOOPS']
     total_stages = 1 + 1 + 1 + 1 + (num_loops * 2) + 1
@@ -673,7 +702,14 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
     success, issue, summary = run_test(current_code, stage)
     if not success:
         issue_escaped = str(issue).replace('{', '{{').replace('}', '}}')
-        prompt = prompts['FIX'].format(code=current_code, error=issue_escaped)
+        
+        # --- BUG FIX ---
+        # Format with all required keys, including `task_prompt`
+        prompt = prompts['FIX'].format(
+            task_prompt=task_prompt, 
+            code=current_code, 
+            error=issue_escaped
+        )
         
         current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
         add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
@@ -690,7 +726,14 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
     prev_code = current_code
     stage = STAGES['REFACTOR_FIRST']
     update_progress(stage)
-    prompt = prompts['REFACTOR_NO_PREV'].format(code=current_code)
+    
+    # --- BUG FIX ---
+    # Format with all required keys, including `task_prompt`
+    prompt = prompts['REFACTOR_NO_PREV'].format(
+        task_prompt=task_prompt, 
+        code=current_code
+    )
+    
     current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
     add_iteration(stage, current_code, llm_error, None, tried, s_provider)
     if llm_error:
@@ -703,7 +746,14 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
     success, issue, summary = run_test(current_code, stage)
     if not success:
         issue_escaped = str(issue).replace('{', '{{').replace('}', '}}')
-        prompt = prompts['FIX'].format(code=current_code, error=issue_escaped)
+        
+        # --- BUG FIX ---
+        # Format with all required keys, including `task_prompt`
+        prompt = prompts['FIX'].format(
+            task_prompt=task_prompt, 
+            code=current_code, 
+            error=issue_escaped
+        )
         
         current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
         add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
@@ -727,8 +777,16 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
         # 5a. Refactor
         stage = f"{STAGES['REFACTOR']}_{i+1}"
         update_progress(stage)
-        prompt = prompts['REFACTOR'].format(code=current_code, prev=prev_code)
+        
+        # --- BUG FIX ---
+        # Format with all required keys, including `task_prompt`
+        prompt = prompts['REFACTOR'].format(
+            task_prompt=task_prompt, 
+            code=current_code, 
+            prev=prev_code
+        )
         prev_code = current_code
+        
         current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage, 'INITIAL')
         add_iteration(stage, current_code, llm_error, None, tried, s_provider)
         if llm_error:
@@ -741,7 +799,14 @@ def process_model(model: str, task_config: Dict, prompts: Dict, engine_config: D
         success, issue, summary = run_test(current_code, stage)
         if not success:
             issue_escaped = str(issue).replace('{', '{{').replace('}', '}}')
-            prompt = prompts['FIX'].format(code=current_code, error=issue_escaped)
+
+            # --- BUG FIX ---
+            # Format with all required keys, including `task_prompt`
+            prompt = prompts['FIX'].format(
+                task_prompt=task_prompt,
+                code=current_code,
+                error=issue_escaped
+            )
             
             current_code, llm_error, tried, s_provider = run_llm_query(prompt, stage)
             add_iteration(stage, current_code, llm_error, summary, tried, s_provider)
@@ -823,6 +888,7 @@ def main():
         sys.exit(1)
 
     # 2. Generate task harness (test_code, TASK_CONSTANTS)
+    # We must pass the raw initial_prompt here for the meta-prompt to be formatted correctly.
     task_config = generate_task_harness(
         initial_prompt, 
         working_harness_model, 
@@ -860,7 +926,7 @@ def main():
         print(f"Warning: Could not save generated test harness for inspection. Error: {e}", file=sys.stderr)
 
 
-    # 3. Generate prompt templates
+    # 3. Generate prompt templates (using the new fixed function)
     prompts = generate_prompt_templates(initial_prompt)
     print("All prompt templates generated.")
     
