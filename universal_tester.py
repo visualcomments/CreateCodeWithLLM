@@ -321,12 +321,43 @@ try:
     g4f.debug.error = patched_error
 except AttributeError:
      print("Failed to apply Monkey-patch for g4f.debug (attributes not found)", file=sys.stderr)
-# ... [End of Patches] ...
+
 
 
 # =============================================================================
 # === ENGINE CONFIGURATION ===
 # =============================================================================
+
+
+HARNESS_VALIDATION_CODE_CONTENT = """
+import json
+import sys
+
+def solve_task(input_data):
+    # Example placeholder logic: Replace this with the *actual* correct solution
+    # for the specific task you are testing. This is just an example for sorting.
+    if isinstance(input_data, list) and all(isinstance(x, (int, float)) for x in input_data):
+        return sorted(input_data)
+    # Add other logic specific to your task here
+    return input_data
+
+# Example: If the script receives an argument, parse it as JSON and run solve_task
+if len(sys.argv) > 1:
+    try:
+        input_data = json.loads(sys.argv[1])
+    except json.JSONDecodeError:
+        print(json.dumps({"error": "Invalid JSON input"}), file=sys.stderr)
+        sys.exit(1)
+else:
+    # Provide a default input if no argument is given (optional, for direct testing)
+    input_data = [3, 1, 4, 1, 5]
+
+# Execute the task
+result = solve_task(input_data)
+
+# Print the result as JSON
+print(json.dumps(result))
+"""
 
 ENGINE_CONFIG = {
     'URLS': {
@@ -368,14 +399,7 @@ ENGINE_CONFIG = {
             g4f.models.llama_3_3_70b,
 
         ],
-        'HARNESS_VALIDATION_CODE': """ # Example: A simple, correct solution for validation
-    def solve_task(input_data):
-        # Example placeholder: Replace with actual correct logic for the specific task
-        # This is just a conceptual example.
-        if isinstance(input_data, list) and all(isinstance(x, int) for x in input_data):
-            return sorted(input_data) # Example: sorting task
-        return input_data
-    """ # This needs to be task-specific or provided by the user
+        'HARNESS_VALIDATION_CODE': HARNESS_VALIDATION_CODE_CONTENT,
     },
     'STAGES': {
         'INITIAL': 'initial_response',
