@@ -361,9 +361,9 @@ ENGINE_CONFIG = {
             #'deepseek-v3',                 # User's requested model
             #'deepseek-r1',
             #'gpt-4',                 # A strong, reliable choice
-            g4f.models.deepseek_v3,         # A good fallback
-            g4f.models.deepseek_r1,     # Another strong option
-            g4f.models.gpt_4
+            g4f.models.aria,         # A good fallback
+            #g4f.models.deepseek_r1,     # Another strong option
+            #g4f.models.gpt_4
         ]
     },
     'STAGES': {
