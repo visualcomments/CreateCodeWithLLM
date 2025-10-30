@@ -329,7 +329,14 @@ except AttributeError:
 # =============================================================================
 
 
-HARNESS_VALIDATION_CODE_CONTENT = """
+def get_validation_code():
+    """
+    Returns a string containing the correct Python implementation for harness validation.
+    This code should solve the task described in the prompt correctly.
+    IMPORTANT: This function must be updated with the correct logic for *each* new task.
+    """
+    # Define the code block with correct indentation relative to the return statement
+    code = """
 import json
 import sys
 
@@ -358,6 +365,8 @@ result = solve_task(input_data)
 # Print the result as JSON
 print(json.dumps(result))
 """
+    return code
+
 
 ENGINE_CONFIG = {
     'URLS': {
@@ -387,19 +396,9 @@ ENGINE_CONFIG = {
         'INTERMEDIATE_FOLDER': 'results',
         'HARNESS_GENERATOR_MODELS': [ # List of models to try for harness generation
             g4f.models.gpt_4,
-            g4f.models.llama_3_2_11b,
-            g4f.models.qwen_2_vl_7b,
-            g4f.models.deepseek_r1,
-            g4f.models.janus_pro_7b,
-            g4f.models.command_r,
-            g4f.models.command_r_plus,
-            g4f.models.command_r7b,
-            g4f.models.qwen_2_5_coder_32b,
-            g4f.models.qwq_32b,
-            g4f.models.llama_3_3_70b,
 
         ],
-        'HARNESS_VALIDATION_CODE': HARNESS_VALIDATION_CODE_CONTENT,
+        'HARNESS_VALIDATION_CODE': get_validation_code(),
     },
     'STAGES': {
         'INITIAL': 'initial_response',
