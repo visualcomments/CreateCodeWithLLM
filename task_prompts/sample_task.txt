@@ -1,0 +1,15 @@
+You are given an array of integers. Write a Python program that reads JSON from sys.argv[1] with a key "arr", 
+and outputs a JSON to stdout with keys:
+- "sorted": the input array sorted ascending
+- "moves": a list of swap operations that your algorithm performed, where each move is [i, j] (0-based indices)
+
+Constraints:
+- The program must terminate.
+- Your output must be valid JSON.
+
+Edge cases to consider:
+- empty array
+- singleton
+- already sorted
+- reverse sorted
+- arrays with duplicates
