@@ -131,7 +131,6 @@ def clean_code(code: str) -> str:
 
 # Custom Rotated with tracking (patching create_async_generator, logs in loop)
 class TrackedRotated(OriginalRotatedProvider):
->>>>>>> 378884a05e1a0098f1c86c0a0cb10d3b3c2af67e
     async def create_async_generator(self, model, messages, **kwargs):
         if not hasattr(_local, 'data') or _local.data is None:
             _local.data = {'tried': [], 'errors': {}, 'success': None, 'model': model}
