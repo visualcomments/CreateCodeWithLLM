@@ -1,34 +1,53 @@
-    Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed swaps.
+**Task:** Implement a linear search algorithm that finds the first occurrence of a target value in a given vector using ONLY sequential element inspection.
 
-    Input: A vector `a` of length `n` (0-indexed).
+**Input:**  
+- A vector `a` of length `n` (0-indexed).  
+- A target value `x` to search for.
 
-    Allowed operations:
-    - swap(i, i+1) for i = 0..n-2 (adjacent swap)
-    - swap(n-1, 0) — a circular swap between the last and the first element
+**Allowed operations:**  
+- Iterate through the vector from index `0` to `n-1`.  
+- Compare `a[i]` with `x` at each step.  
+- Stop immediately upon finding the first match.
 
-    Strict constraints:
-    - No other swaps, slicing, built-in sorting functions, or creating new arrays are allowed.
-    - All swaps must be appended to the `swaps` list immediately after performing them.
-    - Applying the swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
-    - Circular swaps can ONLY be performed as swap(n-1, 0), never as swap(i, n-1-i) or any other non-adjacent pair.
+**Strict constraints:**  
+- No built-in search functions (e.g., `list.index()`, `in`, `filter`, etc.) are allowed.  
+- No slicing, list comprehensions for searching, or external libraries.  
+- The search must be strictly linear and sequential—no skipping, hashing, or binary search logic.  
+- If the target is not found, return `-1`.
 
-    Critical clarification:
-    - Circular swaps may be used multiple times as needed during the sorting process.
-    - The sorting algorithm must continue applying swaps until the array is fully sorted.
+**Critical clarification:**  
+- The algorithm must return the **index of the first occurrence** of `x` in `a`, or `-1` if absent.  
+- The search must inspect elements **in order from left to right**, without any pre-processing of the input.
 
-    Requirements:
-    1. Implement a function `solve(vector)` that returns a tuple `(swaps, sorted_array)`:
-        - `swaps` is a list of tuples representing all swaps performed.
-        - `sorted_array` is the final sorted array after applying all swaps to a copy of the input vector.
-    2. Include a CLI interface:
-        - When the script is executed directly, it should accept a vector as a **command-line argument**.
-        - The output should be a **JSON object** with keys `"swaps"` and `"sorted_array"`.
-    3. Include a minimal example in the `__main__` block for quick testing.
-    4. The code must be fully self-contained and executable without external dependencies.
-    5. JSON output must always be structured and parseable for automated testing.
+**Requirements:**  
+1. Implement a function `solve(vector, target)` that returns the index of the first occurrence of `target` in `vector`, or `-1` if not found.  
+2. Include a CLI interface:  
+   - When the script is executed directly, it should accept **two command-line arguments**:  
+     - The vector as a JSON-formatted string (e.g., `"[3,1,2,5,4]"`)  
+     - The target as a JSON value (e.g., `"2"` or `"\"hello\""` for strings)  
+   - The output must be a **JSON object** with keys `"index"` (integer) and `"found"` (boolean).  
+3. Include a minimal example in the `__main__` block for quick testing.  
+4. The code must be fully self-contained and executable without external dependencies.  
+5. JSON output must always be structured and parseable for automated testing.
 
-    Example expected usage:
+**Example expected usage:**
 
-    ```bash
-    python solve_module.py "[3,1,2,5,4]"
-    
+```bash
+python linear_search.py "[3,1,2,5,4]" 2
+```
+
+**Expected output:**
+```json
+{"index": 2, "found": true}
+```
+
+**Another example:**
+```bash
+python linear_search.py "[3,1,2,5,4]" 7
+```
+
+**Expected output:**
+```json
+{"index": -1, "found": false}
+```
+
