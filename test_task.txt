@@ -1,0 +1,34 @@
+    Task: Implement a sorting algorithm that sorts a given vector using ONLY allowed swaps.
+
+    Input: A vector `a` of length `n` (0-indexed).
+
+    Allowed operations:
+    - swap(i, i+1) for i = 0..n-2 (adjacent swap)
+    - swap(n-1, 0) — a circular swap between the last and the first element
+
+    Strict constraints:
+    - No other swaps, slicing, built-in sorting functions, or creating new arrays are allowed.
+    - All swaps must be appended to the `swaps` list immediately after performing them.
+    - Applying the swaps sequentially to a copy of the input vector must yield a fully sorted ascending array.
+    - Circular swaps can ONLY be performed as swap(n-1, 0), never as swap(i, n-1-i) or any other non-adjacent pair.
+
+    Critical clarification:
+    - Circular swaps may be used multiple times as needed during the sorting process.
+    - The sorting algorithm must continue applying swaps until the array is fully sorted.
+
+    Requirements:
+    1. Implement a function `solve(vector)` that returns a tuple `(swaps, sorted_array)`:
+        - `swaps` is a list of tuples representing all swaps performed.
+        - `sorted_array` is the final sorted array after applying all swaps to a copy of the input vector.
+    2. Include a CLI interface:
+        - When the script is executed directly, it should accept a vector as a **command-line argument**.
+        - The output should be a **JSON object** with keys `"swaps"` and `"sorted_array"`.
+    3. Include a minimal example in the `__main__` block for quick testing.
+    4. The code must be fully self-contained and executable without external dependencies.
+    5. JSON output must always be structured and parseable for automated testing.
+
+    Example expected usage:
+
+    ```bash
+    python solve_module.py "[3,1,2,5,4]"
+    
